@@ -1,4 +1,7 @@
 # Coronavirus Dresden
+
+[![License](https://img.shields.io/github/license/jdieg0/coronavirus-dresden)](https://github.com/jdieg0/coronavirus-dresden/blob/main/LICENSE)
+
 This script collects official infection statistics published by the city of Dresden and saves them to [InfluxDB](https://www.influxdata.com/products/influxdb-overview/). From there the data can be processed and visualised using SQL and, for instance, [Grafana](https://grafana.com/docs/grafana/latest/datasources/influxdb/).
 
 Subsequent changes to the published data set can also be detected and routinely logged.

@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 
-# Constants
+# constants
 JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=json&where=ObjectId>=0&outFields=*'
 CACHED_JSON_FILENAME = 'cached.json'
 
-# Debugging
+# debugging
 from IPython import embed
 
-# Command line arguments
+# command line arguments
 import argparse
 
-# Logging
+# logging
 import logging
 
-# Paths
+# paths
 import sys
 import pathlib
 
@@ -21,23 +21,24 @@ import pathlib
 import urllib.request
 import json
 
-# Date parsing
+# date parsing
 import dateutil.parser
 from datetime import datetime
 
-# Database
+# database
 from influxdb import InfluxDBClient
 
 def setup():
-    """Performs some basic configuration regarding the database.
+    """Performs some basic configuration regarding logging, command line options, database etc.
     """
     # setup logging
     logging_format = '%(asctime)s %(levelname)s %(message)s' # %(name)s.%(funcName)s %(pathname)s:
     logging.basicConfig(level=logging.INFO, format=logging_format)
     logger = logging.getLogger()
 
-    # Read command line arguments.
+    # read command line arguments (https://docs.python.org/3/howto/argparse.html)
     argparser = argparse.ArgumentParser(description='Collect official infection statistics published by the city of Dresden.')
+    argparser.add_argument('-d', '--date', help='set publishing date manually for the new data set')
     argparser.add_argument('-f', '--file', help='load JSON data from a local file instead from server', nargs='?', type=argparse.FileType('r'), const='query.json') # default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
     argparser.add_argument('-v', '--verbose', help='print debug messages', action='store_true')
 
@@ -91,7 +92,10 @@ def main():
             json.dump(data, json_file)
 
         # generate time series list according to the expected InfluxDB line protocol: https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/
-        data_timestamp = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+        if args.date:
+            data_timestamp = args.date # use user's publishing date if given for the new data set
+        else:
+            data_timestamp = datetime.now().strftime('%Y-%m-%dT%H:%M:%S') # use current time
         time_series = []
         for measurement in data['features']:
             point = {
