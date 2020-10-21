@@ -39,6 +39,8 @@ def setup():
 
     # read command line arguments (https://docs.python.org/3/howto/argparse.html)
     argparser = argparse.ArgumentParser(description='Collect official SARS-CoV-2 infection statistics published by the city of Dresden.')
+    argparser.add_argument('-a', '--archive', help='archive JSON file each time new data is found', action='store_true')
+    argparser.add_argument('-c', '--force-collect', help='store JSON data, regardless of whether new data points have been found or not', action='store_true')
     argparser.add_argument('-d', '--date', help='set publishing date manually for the new data set')
     argparser.add_argument('-f', '--file', help='load JSON data from a local file instead from server', nargs='?', type=argparse.FileType('r'), const='query.json') # default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
     argparser.add_argument('-l', '--log', help='save log in file \'{:s}\''.format(log_filename), action='store_true')
@@ -99,21 +101,33 @@ def main():
             data = json.load(response)
             logger.debug('Downloaded JSON data from server.')
         
-    # check whether downloaded JSON contains new data
-    if data == cached_data:
-        logger.debug('Data has not changed.')
+    # check whether downloaded JSON contains new data or user enforced data collection
+    if data == cached_data and not args.force_collect:
+        logger.info('Data has not changed.')
     else:
-        logger.info('Found new data!')
+        if data != cached_data:
+            logger.info('Found new data!')
+        else:
+            logger.info('Data has not changed, but is nevertheless collected as requested.')
 
-        # cache JSON file
-        with open(json_file_path, 'w') as json_file:
-            json.dump(data, json_file)
-
-        # generate time series list according to the expected InfluxDB line protocol: https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/
+        # save query date
         if args.date:
             data_timestamp = args.date # use user's publishing date if given for the new data set
         else:
             data_timestamp = datetime.now().strftime('%Y-%m-%dT%H:%M:%S') # use current time
+
+        # cache JSON file
+        with open(json_file_path, 'w') as json_file:
+            json.dump(data, json_file)
+        # archive JSON file
+        if args.archive:
+            archive_file_dir = pathlib.Path(abs_python_file_dir, 'archive')
+            pathlib.Path.mkdir(archive_file_dir, exist_ok=True)
+            archive_file_path = pathlib.Path(archive_file_dir, '{:s}.json'.format(data_timestamp))
+            with open(archive_file_path, 'w') as json_file:
+                json.dump(data, json_file)
+
+        # generate time series list according to the expected InfluxDB line protocol: https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/
         time_series = []
         for measurement in data['features']:
             point = {

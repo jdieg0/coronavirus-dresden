@@ -68,7 +68,7 @@ To search for new data regularly, enter:
 
 Add the following line to run the script every 5 minutes (adapt paths to suit your own installation):
 
-    */5 * * * * /root/bin/coronavirus-dresden/venv/bin/python /root/bin/coronavirus-dresden/collect.py --verbose
+    */5 * * * * /root/bin/coronavirus-dresden/venv/bin/python /root/bin/coronavirus-dresden/collect.py --verbose --log --archive
 
 ### Command line arguments
 
