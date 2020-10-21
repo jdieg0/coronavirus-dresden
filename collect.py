@@ -12,6 +12,7 @@ import argparse
 
 # logging
 import logging
+import logging.handlers
 
 # paths
 import sys
@@ -31,13 +32,12 @@ from influxdb import InfluxDBClient
 def setup():
     """Performs some basic configuration regarding logging, command line options, database etc.
     """
-    # setup logging
-    logging_format = '%(asctime)s %(levelname)s %(message)s' # %(name)s.%(funcName)s %(pathname)s:
-    logging.basicConfig(level=logging.INFO, format=logging_format)
-    logger = logging.getLogger()
+    # get absolute path of this Python file
+    global abs_python_file_dir
+    abs_python_file_dir = pathlib.Path(__file__).resolve().parent
 
     # read command line arguments (https://docs.python.org/3/howto/argparse.html)
-    argparser = argparse.ArgumentParser(description='Collect official infection statistics published by the city of Dresden.')
+    argparser = argparse.ArgumentParser(description='Collect official SARS-CoV-2 infection statistics published by the city of Dresden.')
     argparser.add_argument('-d', '--date', help='set publishing date manually for the new data set')
     argparser.add_argument('-f', '--file', help='load JSON data from a local file instead from server', nargs='?', type=argparse.FileType('r'), const='query.json') # default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
     argparser.add_argument('-v', '--verbose', help='print debug messages', action='store_true')
@@ -46,12 +46,28 @@ def setup():
     args = argparser.parse_args()
 
     if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-        logger.info('Debug output turned on.')
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
 
-    # get absolute path of this Python file
-    global abs_python_file_path
-    abs_python_file_path = pathlib.Path(__file__).resolve()
+    # setup logging
+    global logger
+    logger = logging.getLogger()
+    logger.setLevel(log_level)
+
+    # log format
+    logging_format = '%(asctime)s %(levelname)s %(message)s' # %(name)s.%(funcName)s %(pathname)s:
+    log_formatter = logging.Formatter(logging_format) #, datefmt="%Y-%m-%dT%H:%M:%S")
+
+    # log to file
+    handler = logging.handlers.RotatingFileHandler(pathlib.Path(abs_python_file_dir, 'collect.log'), maxBytes=2**20, backupCount=5) # https://stackoverflow.com/a/13733777/7192373; https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler
+    handler.setFormatter(log_formatter)
+    logger.addHandler(handler)
+
+    # log to console
+    handler = logging.StreamHandler()
+    handler.setFormatter(log_formatter)
+    logger.addHandler(handler)
 
     # setup DB connection
     global db_client
@@ -61,10 +77,9 @@ def setup():
 
 def main():
     setup()
-    logger = logging.getLogger()
 
     # load locally cached JSON file
-    json_file_path = pathlib.Path(abs_python_file_path.parent, CACHED_JSON_FILENAME)
+    json_file_path = pathlib.Path(abs_python_file_dir, CACHED_JSON_FILENAME)
     try:
         with open(json_file_path, 'r') as json_file:
             cached_data = json.load(json_file)
@@ -83,9 +98,9 @@ def main():
         
     # check whether downloaded JSON contains new data
     if data == cached_data:
-        logger.debug('JSON data has not changed.')
+        logger.debug('Data has not changed.')
     else:
-        logger.debug('New JSON data found!')
+        logger.info('Found new data!')
 
         # cache JSON file
         with open(json_file_path, 'w') as json_file:
@@ -104,7 +119,7 @@ def main():
                     'pub_date'  : data_timestamp, # date on which the record was published
                     },
                 'time'          : datetime.isoformat(dateutil.parser.parse(measurement['attributes'].pop('Datum'), dayfirst=True)), # parse date, switch month and day and generate ISO 8601 formatted string
-                'fields'        : { # in principle, a simple "measurement.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point (in case of this foreign dataset, some fields arefilled with NoneType) written to a series; https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
+                'fields'        : { # in principle, a simple "measurement.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point written to a series (in case of this foreign data set, some fields are filled with NoneType); https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
                     'Anzeige_Indikator'             : str(measurement['attributes']['Anzeige_Indikator']), # value is either None or 'x'
                     'BelegteBetten'                 : int(measurement['attributes']['BelegteBetten'] or 0), # replace NoneType with 0
                     'Datum_neu'                     : int(measurement['attributes']['Datum_neu'] or 0),
@@ -124,6 +139,7 @@ def main():
 
         # write data to database
         db_client.write_points(time_series)
+        logger.info('Time series successfully written to database.')
 
 if __name__ == '__main__':
     main()
