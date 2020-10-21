@@ -35,11 +35,13 @@ def setup():
     # get absolute path of this Python file
     global abs_python_file_dir
     abs_python_file_dir = pathlib.Path(__file__).resolve().parent
+    log_filename = '{}{:s}'.format(pathlib.Path(__file__).resolve().stem, '.log')
 
     # read command line arguments (https://docs.python.org/3/howto/argparse.html)
     argparser = argparse.ArgumentParser(description='Collect official SARS-CoV-2 infection statistics published by the city of Dresden.')
     argparser.add_argument('-d', '--date', help='set publishing date manually for the new data set')
     argparser.add_argument('-f', '--file', help='load JSON data from a local file instead from server', nargs='?', type=argparse.FileType('r'), const='query.json') # default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
+    argparser.add_argument('-l', '--log', help='save log in file \'{:s}\''.format(log_filename), action='store_true')
     argparser.add_argument('-v', '--verbose', help='print debug messages', action='store_true')
 
     global args
@@ -59,15 +61,16 @@ def setup():
     logging_format = '%(asctime)s %(levelname)s %(message)s' # %(name)s.%(funcName)s %(pathname)s:
     log_formatter = logging.Formatter(logging_format) #, datefmt="%Y-%m-%dT%H:%M:%S")
 
-    # log to file
-    handler = logging.handlers.RotatingFileHandler(pathlib.Path(abs_python_file_dir, 'collect.log'), maxBytes=2**20, backupCount=5) # https://stackoverflow.com/a/13733777/7192373; https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler
-    handler.setFormatter(log_formatter)
-    logger.addHandler(handler)
-
     # log to console
     handler = logging.StreamHandler()
     handler.setFormatter(log_formatter)
     logger.addHandler(handler)
+
+    # log to file
+    if args.log:
+        handler = logging.handlers.RotatingFileHandler(pathlib.Path(abs_python_file_dir, log_filename), maxBytes=2**20, backupCount=5) # https://stackoverflow.com/a/13733777/7192373; https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler
+        handler.setFormatter(log_formatter)
+        logger.addHandler(handler)
 
     # setup DB connection
     global db_client

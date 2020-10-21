@@ -20,6 +20,9 @@ Using a virtual environment of your choice is recommended. An exemplary installa
 
 ### venv (recommended)
 
+    git clone https://github.com/jdieg0/coronavirus-dresden.git
+    cd coronavirus-dresden
+
 	python3 -m venv venv
 	source venv/bin/activate
 
@@ -56,6 +59,16 @@ Helpful resources:
 ## Run
 
     python collect.py
+
+### cron
+
+To search for new data regularly, enter:
+
+    sudo crontab -e
+
+Add the following line to run the script every 5 minutes (adapt paths to suit your own installation):
+
+    */5 * * * * /root/bin/coronavirus-dresden/venv/bin/python /root/bin/coronavirus-dresden/collect.py --verbose
 
 ### Command line arguments
 
