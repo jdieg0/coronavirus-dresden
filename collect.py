@@ -39,7 +39,7 @@ def setup():
 
     # read command line arguments (https://docs.python.org/3/howto/argparse.html)
     argparser = argparse.ArgumentParser(description='Collect official SARS-CoV-2 infection statistics published by the city of Dresden.')
-    argparser.add_argument('-a', '--archive', help='archive JSON file each time new data is found', action='store_true')
+    argparser.add_argument('-a', '--archive-json', help='archive JSON file each time new data is found', action='store_true')
     argparser.add_argument('-c', '--force-collect', help='store JSON data, regardless of whether new data points have been found or not', action='store_true')
     argparser.add_argument('-d', '--date', help='set publishing date manually for the new data set')
     argparser.add_argument('-f', '--file', help='load JSON data from a local file instead from server', nargs='?', type=argparse.FileType('r'), const='query.json') # default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
@@ -120,7 +120,7 @@ def main():
         with open(json_file_path, 'w') as json_file:
             json.dump(data, json_file)
         # archive JSON file
-        if args.archive:
+        if args.archive_json:
             archive_file_dir = pathlib.Path(abs_python_file_dir, 'archive')
             pathlib.Path.mkdir(archive_file_dir, exist_ok=True)
             archive_file_path = pathlib.Path(archive_file_dir, '{:s}.json'.format(data_timestamp))

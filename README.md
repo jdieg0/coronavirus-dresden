@@ -2,6 +2,8 @@
 
 [![License](https://img.shields.io/github/license/jdieg0/coronavirus-dresden)](https://github.com/jdieg0/coronavirus-dresden/blob/main/LICENSE)
 
+<a href="https://raw.githubusercontent.com/jdieg0/coronavirus-dresden/master/assets/images/grafana_covid-19-dashboard-dresden_screenshot.jpg"><img align="right" width="50%" src="assets/images/grafana_covid-19-dashboard-dresden_screenshot.jpg" title="Visualization with Grafana" alt="Screenshot of a Grafana dashboard that uses the data"></a>
+
 This script collects official infection statistics published by the city of Dresden and saves them to [InfluxDB](https://www.influxdata.com/products/influxdb-overview/). From there the data can be processed and visualised using SQL and, for instance, [Grafana](https://grafana.com/docs/grafana/latest/datasources/influxdb/).
 
 Subsequent changes to the published data set can also be detected and routinely logged.
@@ -68,7 +70,7 @@ To search for new data regularly, enter:
 
 Add the following line to run the script every 5 minutes (adapt paths to suit your own installation):
 
-    */5 * * * * /root/bin/coronavirus-dresden/venv/bin/python /root/bin/coronavirus-dresden/collect.py --verbose --log --archive
+    */5 * * * * /root/bin/coronavirus-dresden/venv/bin/python /root/bin/coronavirus-dresden/collect.py --log --archive-json
 
 ### Command line arguments
 
