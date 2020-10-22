@@ -1,6 +1,7 @@
 # Coronavirus Dresden
 
 [![License](https://img.shields.io/github/license/jdieg0/coronavirus-dresden)](https://github.com/jdieg0/coronavirus-dresden/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/jdieg0/coronavirus-dresden)](https://github.com/jdieg0/coronavirus-dresden/releases)
 
 <a href="https://raw.githubusercontent.com/jdieg0/coronavirus-dresden/main/assets/images/grafana_covid-19-dashboard-dresden_screenshot.jpg"><img align="right" width="60%" src="assets/images/grafana_covid-19-dashboard-dresden_screenshot.jpg" title="Visualization with Grafana" alt="Screenshot of a Grafana dashboard that uses the data"></a>
 
