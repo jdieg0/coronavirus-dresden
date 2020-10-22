@@ -121,7 +121,7 @@ def main():
             json.dump(data, json_file)
         # archive JSON file
         if args.archive_json:
-            archive_file_dir = pathlib.Path(abs_python_file_dir, 'archive')
+            archive_file_dir = pathlib.Path(abs_python_file_dir, 'json-archive')
             pathlib.Path.mkdir(archive_file_dir, exist_ok=True)
             archive_file_path = pathlib.Path(archive_file_dir, '{:s}.json'.format(data_pub_date.strftime('%Y-%m-%dT%H.%M.%SZ')))
             with open(archive_file_path, 'w') as json_file:
