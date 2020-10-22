@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # constants
+RELEASE = 'v0.2.0'
 JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=json&where=ObjectId>=0&outFields=*'
 CACHED_JSON_FILENAME = 'cached.json'
 
@@ -15,7 +16,6 @@ import logging
 import logging.handlers
 
 # paths
-import sys
 import pathlib
 
 # JSON
@@ -24,7 +24,7 @@ import json
 
 # date parsing
 import dateutil.parser
-from datetime import datetime
+from datetime import datetime, timezone
 
 # database
 from influxdb import InfluxDBClient
@@ -39,9 +39,9 @@ def setup():
 
     # read command line arguments (https://docs.python.org/3/howto/argparse.html)
     argparser = argparse.ArgumentParser(description='Collect official SARS-CoV-2 infection statistics published by the city of Dresden.')
-    argparser.add_argument('-a', '--archive-json', help='archive JSON file each time new data is found', action='store_true')
+    argparser.add_argument('-a', '--archive-json', help='archive JSON file each time new data is found or force-collected', action='store_true')
     argparser.add_argument('-c', '--force-collect', help='store JSON data, regardless of whether new data points have been found or not', action='store_true')
-    argparser.add_argument('-d', '--date', help='set publishing date manually for the new data set')
+    argparser.add_argument('-d', '--date', help='set publishing date manually for the new data set, e. g. \'2020-10-18T09:52:41Z\', otherwise current time (UTC) is used')
     argparser.add_argument('-f', '--file', help='load JSON data from a local file instead from server', nargs='?', type=argparse.FileType('r'), const='query.json') # default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
     argparser.add_argument('-l', '--log', help='save log in file \'{:s}\''.format(log_filename), action='store_true')
     argparser.add_argument('-v', '--verbose', help='print debug messages', action='store_true')
@@ -95,7 +95,7 @@ def main():
     # load (possibly) new JSON data and write it to InfluxDB
     if args.file:
         data = json.load(args.file)
-        logger.debug('Read JSON data from local file {:s}.'.format(args.file.name))
+        logger.debug('Read JSON data from local file \'{:s}\'.'.format(args.file.name))
     else:
         with urllib.request.urlopen(JSON_URL) as response:
             data = json.load(response)
@@ -112,9 +112,9 @@ def main():
 
         # save query date
         if args.date:
-            data_timestamp = args.date # use user's publishing date if given for the new data set
+            data_pub_date = dateutil.parser.parse(args.date) # use user's publishing date if given for the new data set
         else:
-            data_timestamp = datetime.now().strftime('%Y-%m-%dT%H:%M:%S') # use current time
+            data_pub_date = datetime.now(tz=timezone.utc) # use current time
 
         # cache JSON file
         with open(json_file_path, 'w') as json_file:
@@ -123,7 +123,7 @@ def main():
         if args.archive_json:
             archive_file_dir = pathlib.Path(abs_python_file_dir, 'archive')
             pathlib.Path.mkdir(archive_file_dir, exist_ok=True)
-            archive_file_path = pathlib.Path(archive_file_dir, '{:s}.json'.format(data_timestamp))
+            archive_file_path = pathlib.Path(archive_file_dir, '{:s}.json'.format(data_pub_date.strftime('%Y-%m-%dT%H.%M.%SZ')))
             with open(archive_file_path, 'w') as json_file:
                 json.dump(data, json_file)
 
@@ -133,10 +133,14 @@ def main():
             point = {
                 'measurement'   : 'dresden_official',
                 'tags'          : { # metadata for the data point
-                    'pub_date'  : data_timestamp, # date on which the record was published
+                    'script_version'    : RELEASE, # state version numer of this script
+                    'pub_date'          : data_pub_date.strftime('%Y-%m-%dT%H:%M:%S'), # date on which the record was published
                     },
-                'time'          : datetime.isoformat(dateutil.parser.parse(measurement['attributes'].pop('Datum'), dayfirst=True)), # parse date, switch month and day and generate ISO 8601 formatted string
+                'time'          : int(dateutil.parser.parse(measurement['attributes'].pop('Datum'), dayfirst=True).replace(tzinfo=timezone.utc).timestamp()), # parse date, switch month and day, explicetely set UTC (InfluxDB uses UTC), otherwise local timezone is assumed; 'datetime.isoformat()': generate ISO 8601 formatted string (e. g. '2020-10-22T21:30:13.883657+00:00')
                 'fields'        : { # in principle, a simple "measurement.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point written to a series (in case of this foreign data set, some fields are filled with NoneType); https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
+                    # own fields
+                    'pub_date_seconds'              : int(data_pub_date.timestamp()), # add better searchable UNIX timestamp in seconds in addition to the human readable 'pub_date' tag; https://docs.influxdata.com/influxdb/v2.0/reference/glossary/#unix-timestamp; POSIX timestamps in Python: https://stackoverflow.com/a/8778548/7192373
+                    # fields from data source
                     'Anzeige_Indikator'             : str(measurement['attributes']['Anzeige_Indikator']), # value is either None or 'x'
                     'BelegteBetten'                 : int(measurement['attributes']['BelegteBetten'] or 0), # replace NoneType with 0
                     'Datum_neu'                     : int(measurement['attributes']['Datum_neu'] or 0),
@@ -155,7 +159,7 @@ def main():
             time_series.append(point)
 
         # write data to database
-        db_client.write_points(time_series)
+        db_client.write_points(time_series, time_precision='s')
         logger.info('Time series successfully written to database.')
 
 if __name__ == '__main__':
