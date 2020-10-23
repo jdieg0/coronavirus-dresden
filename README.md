@@ -3,15 +3,15 @@
 [![License](https://img.shields.io/github/license/jdieg0/coronavirus-dresden)](https://github.com/jdieg0/coronavirus-dresden/blob/main/LICENSE)
 [![Release](https://img.shields.io/github/v/release/jdieg0/coronavirus-dresden)](https://github.com/jdieg0/coronavirus-dresden/releases)
 
-<a href="https://raw.githubusercontent.com/jdieg0/coronavirus-dresden/main/assets/images/grafana_covid-19-dashboard-dresden_screenshot.jpg"><img align="right" width="60%" src="assets/images/grafana_covid-19-dashboard-dresden_screenshot.jpg" title="Visualization with Grafana" alt="Screenshot of a Grafana dashboard that uses the data"></a>
+<a href="https://raw.githubusercontent.com/jdieg0/coronavirus-dresden/main/assets/images/grafana_covid-19-dashboard-dresden_screenshot.png"><img align="right" width="50%" src="assets/images/grafana_covid-19-dashboard-dresden_screenshot.png" title="Visualization with Grafana" alt="Screenshot of a Grafana dashboard that uses the data"></a>
 
-This script collects official infection statistics published by the city of Dresden and saves them to [InfluxDB](https://www.influxdata.com/products/influxdb-overview/). From there the data can be processed and visualised using SQL and, for instance, [Grafana](https://grafana.com/docs/grafana/latest/datasources/influxdb/).
+This script collects official infection statistics published by the city of Dresden and saves them to [InfluxDB](https://www.influxdata.com/products/influxdb-overview/). From there the data can be processed and visualised using the SQL-like query language [InfluxQL](https://docs.influxdata.com/influxdb/v1.8/query_language/spec/) and, for instance, [Grafana](https://grafana.com/docs/grafana/latest/datasources/influxdb/).
 
 Subsequent changes to the published data set can also be detected and routinely logged.
 
 ## Data source
 
-The raw data provided by the [city of Dresden](https://www.dresden.de/de/leben/gesundheit/hygiene/infektionsschutz/corona.php) and visualised on their [Dashboard](https://stva-dd.maps.arcgis.com/apps/opsdashboard/index.html#/3eef863531024aa4ad0c4ac94adc58e0) can be obtained from the following source:
+The raw data provided by the [city of Dresden](https://www.dresden.de/de/leben/gesundheit/hygiene/infektionsschutz/corona.php) and visualised on their [Dashboard](https://stva-dd.maps.arcgis.com/apps/opsdashboard/index.html#/3eef863531024aa4ad0c4ac94adc58e0) is obtained from the following source:
 
 - [Overview over all tables and data fields](https://services.arcgis.com/ORpvigFPJUhb8RDF/ArcGIS/rest/services/corona_DD_7_Sicht/FeatureServer/layers)
 - [Web form for queries](https://services.arcgis.com/ORpvigFPJUhb8RDF/ArcGIS/rest/services/corona_DD_7_Sicht/FeatureServer/query)
