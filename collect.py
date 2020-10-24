@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # constants
-RELEASE = 'v0.2.0'
+RELEASE = 'v0.2.1'
 JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=json&where=ObjectId>=0&outFields=*'
 CACHED_JSON_FILENAME = 'cached.json'
 
@@ -38,7 +38,7 @@ def setup():
     log_filename = '{}{:s}'.format(pathlib.Path(__file__).resolve().stem, '.log')
 
     # read command line arguments (https://docs.python.org/3/howto/argparse.html)
-    argparser = argparse.ArgumentParser(description='Collect official SARS-CoV-2 infection statistics published by the city of Dresden.')
+    argparser = argparse.ArgumentParser(description='Collects official SARS-CoV-2 infection statistics published by the city of Dresden.')
     argparser.add_argument('-a', '--archive-json', help='archive JSON file each time new data is found or force-collected', action='store_true')
     argparser.add_argument('-c', '--force-collect', help='store JSON data, regardless of whether new data points have been found or not', action='store_true')
     argparser.add_argument('-d', '--date', help='set publishing date manually for the new data set, e. g. \'2020-10-18T09:52:41Z\', otherwise current time (UTC) is used')
@@ -135,6 +135,7 @@ def main():
                 'tags'          : { # metadata for the data point
                     'script_version'    : RELEASE, # state version numer of this script
                     'pub_date'          : data_pub_date.strftime('%Y-%m-%dT%H:%M:%S'), # date on which the record was published
+                    'pub_date_short'    : data_pub_date.strftime('%d.%m.%Y'), # shorter version for graph legend aliases in Grafana
                     },
                 'time'          : int(dateutil.parser.parse(measurement['attributes'].pop('Datum'), dayfirst=True).replace(tzinfo=timezone.utc).timestamp()), # parse date, switch month and day, explicetely set UTC (InfluxDB uses UTC), otherwise local timezone is assumed; 'datetime.isoformat()': generate ISO 8601 formatted string (e. g. '2020-10-22T21:30:13.883657+00:00')
                 'fields'        : { # in principle, a simple "measurement.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point written to a series (in case of this foreign data set, some fields are filled with NoneType); https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
