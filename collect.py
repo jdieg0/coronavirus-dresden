@@ -5,6 +5,8 @@ RELEASE = 'v0.2.1'
 JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=json&where=ObjectId>=0&outFields=*'
 CACHED_JSON_FILENAME = 'cached.json'
 
+import sys
+
 # debugging
 from IPython import embed
 
@@ -39,11 +41,13 @@ def setup():
 
     # read command line arguments (https://docs.python.org/3/howto/argparse.html)
     argparser = argparse.ArgumentParser(description='Collects official SARS-CoV-2 infection statistics published by the city of Dresden.')
+    arggroup = argparser.add_mutually_exclusive_group()
     argparser.add_argument('-a', '--archive-json', help='archive JSON file each time new data is found or force-collected', action='store_true')
     argparser.add_argument('-c', '--force-collect', help='store JSON data, regardless of whether new data points have been found or not', action='store_true')
-    argparser.add_argument('-d', '--date', help='set publishing date manually for the new data set, e. g. \'2020-10-18T09:52:41Z\', otherwise current time (UTC) is used')
-    argparser.add_argument('-f', '--file', help='load JSON data from a local file instead from server', nargs='?', type=argparse.FileType('r'), const='query.json') # default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
+    arggroup.add_argument('-d', '--date', help='set publishing date manually for the new data set, e. g. \'2020-10-18T09:52:41Z\'')
+    argparser.add_argument('-f', '--file', help='load JSON data from a local file instead from server; if no publishing date is passed with the \'--date\' option, an attempt is made to read the date from the filename', nargs='?', type=argparse.FileType('r'), const='query.json') # default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
     argparser.add_argument('-l', '--log', help='save log in file \'{:s}\''.format(log_filename), action='store_true')
+    arggroup.add_argument('-t', '--auto-date', help='do not try to to parse the publishing date from the filename, instead write current date (UTC) to database', action='store_true')
     argparser.add_argument('-v', '--verbose', help='print debug messages', action='store_true')
 
     global args
@@ -112,9 +116,20 @@ def main():
 
         # save query date
         if args.date:
-            data_pub_date = dateutil.parser.parse(args.date) # use user's publishing date if given for the new data set
-        else:
-            data_pub_date = datetime.now(tz=timezone.utc) # use current time
+            try:
+                data_pub_date = dateutil.parser.parse(args.date) # use user's publishing date if given for the new data set
+            except dateutil.parser.ParserError:
+                logger.error('Failed to parse publishing date \'{:s}\'.'.format(args.date))
+                sys.exit()
+        elif args.file and not args.auto_date:
+            json_filename = pathlib.Path(args.file.name).stem
+            try:
+                data_pub_date = dateutil.parser.parse(json_filename) # try to parse the filename as date, if '--auto-date' option is set or data is loaded downloaded from server
+            except dateutil.parser.ParserError:
+                logger.error('Failed to parse the publishing date \'{:s}\' from filename. Please rename the file so that it has a valid date format or use the \'--date\' option to specify the date or pass \'--auto-date\' to save the current time as the publishing date for this time series. For further help type \'python {} --help\'.'.format(json_filename, pathlib.Path(__file__).resolve().name))
+                sys.exit()
+        else: # loaded from file with '--auto-date' option or downloaded from server
+            data_pub_date = datetime.now(tz=timezone.utc) # otherwise use current time
 
         # cache JSON file
         with open(json_file_path, 'w') as json_file:
@@ -123,7 +138,7 @@ def main():
         if args.archive_json:
             archive_file_dir = pathlib.Path(abs_python_file_dir, 'json-archive')
             pathlib.Path.mkdir(archive_file_dir, exist_ok=True)
-            archive_file_path = pathlib.Path(archive_file_dir, '{:s}.json'.format(data_pub_date.strftime('%Y-%m-%dT%H.%M.%SZ')))
+            archive_file_path = pathlib.Path(archive_file_dir, '{:s}.json'.format(data_pub_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
             with open(archive_file_path, 'w') as json_file:
                 json.dump(data, json_file)
 
@@ -135,7 +150,7 @@ def main():
                 'tags'          : { # metadata for the data point
                     'script_version'    : RELEASE, # state version numer of this script
                     'pub_date'          : data_pub_date.strftime('%Y-%m-%dT%H:%M:%S'), # date on which the record was published
-                    'pub_date_short'    : data_pub_date.strftime('%d.%m.%Y'), # shorter version for graph legend aliases in Grafana
+                    'pub_date_short'    : data_pub_date.strftime('%d.%m.%Y'), # shorter version for graph legend aliases in Grafana; https://grafana.com/docs/grafana/latest/datasources/influxdb/#alias-patterns
                     },
                 'time'          : int(dateutil.parser.parse(measurement['attributes'].pop('Datum'), dayfirst=True).replace(tzinfo=timezone.utc).timestamp()), # parse date, switch month and day, explicetely set UTC (InfluxDB uses UTC), otherwise local timezone is assumed; 'datetime.isoformat()': generate ISO 8601 formatted string (e. g. '2020-10-22T21:30:13.883657+00:00')
                 'fields'        : { # in principle, a simple "measurement.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point written to a series (in case of this foreign data set, some fields are filled with NoneType); https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
