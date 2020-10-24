@@ -5,6 +5,9 @@ RELEASE = 'v0.2.1'
 JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=json&where=ObjectId>=0&outFields=*'
 CACHED_JSON_FILENAME = 'cached.json'
 
+INFLUXDB_DATABASE = 'corona_dd'
+INFLUXDB_MEASUREMENT = 'dresden_official'
+
 import sys
 
 # debugging
@@ -81,8 +84,8 @@ def setup():
     # setup DB connection
     global db_client
     db_client = InfluxDBClient(host='localhost', port=8086) # https://www.influxdata.com/blog/getting-started-python-influxdb/
-    db_client.create_database('corona_dd')
-    db_client.switch_database('corona_dd')
+    db_client.create_database(INFLUXDB_DATABASE)
+    db_client.switch_database(INFLUXDB_DATABASE)
 
 def main():
     setup()
@@ -142,41 +145,47 @@ def main():
             with open(archive_file_path, 'w') as json_file:
                 json.dump(data, json_file)
 
+        # define tags of the time series
+        influxdb_tag_pub_date = data_pub_date.strftime('%Y-%m-%dT%H:%M:%S') # date on which the record was published
+        influxdb_tag_pub_date_short = data_pub_date.strftime('%d.%m.%Y') # shorter version for graph legend aliases in Grafana; https://grafana.com/docs/grafana/latest/datasources/influxdb/#alias-patterns
+        influxdb_tag_script_version = RELEASE # state version numer of this script
+
         # generate time series list according to the expected InfluxDB line protocol: https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/
         time_series = []
-        for measurement in data['features']:
-            point = {
-                'measurement'   : 'dresden_official',
+        for point in data['features']:
+            point_dict = {
+                'measurement'   : INFLUXDB_MEASUREMENT,
                 'tags'          : { # metadata for the data point
-                    'script_version'    : RELEASE, # state version numer of this script
-                    'pub_date'          : data_pub_date.strftime('%Y-%m-%dT%H:%M:%S'), # date on which the record was published
-                    'pub_date_short'    : data_pub_date.strftime('%d.%m.%Y'), # shorter version for graph legend aliases in Grafana; https://grafana.com/docs/grafana/latest/datasources/influxdb/#alias-patterns
+                    'pub_date'          : influxdb_tag_pub_date,
+                    'pub_date_short'    : influxdb_tag_pub_date_short,
+                    'script_version'    : influxdb_tag_script_version,
                     },
-                'time'          : int(dateutil.parser.parse(measurement['attributes'].pop('Datum'), dayfirst=True).replace(tzinfo=timezone.utc).timestamp()), # parse date, switch month and day, explicetely set UTC (InfluxDB uses UTC), otherwise local timezone is assumed; 'datetime.isoformat()': generate ISO 8601 formatted string (e. g. '2020-10-22T21:30:13.883657+00:00')
-                'fields'        : { # in principle, a simple "measurement.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point written to a series (in case of this foreign data set, some fields are filled with NoneType); https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
+                'time'          : int(dateutil.parser.parse(point['attributes'].pop('Datum'), dayfirst=True).replace(tzinfo=timezone.utc).timestamp()), # parse date, switch month and day, explicetely set UTC (InfluxDB uses UTC), otherwise local timezone is assumed; 'datetime.isoformat()': generate ISO 8601 formatted string (e. g. '2020-10-22T21:30:13.883657+00:00')
+                'fields'        : { # in principle, a simple "point.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point written to a series (in case of this foreign data set, some fields are filled with NoneType); https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
                     # own fields
                     'pub_date_seconds'              : int(data_pub_date.timestamp()), # add better searchable UNIX timestamp in seconds in addition to the human readable 'pub_date' tag; https://docs.influxdata.com/influxdb/v2.0/reference/glossary/#unix-timestamp; POSIX timestamps in Python: https://stackoverflow.com/a/8778548/7192373
                     # fields from data source
-                    'Anzeige_Indikator'             : str(measurement['attributes']['Anzeige_Indikator']), # value is either None or 'x'
-                    'BelegteBetten'                 : int(measurement['attributes']['BelegteBetten'] or 0), # replace NoneType with 0
-                    'Datum_neu'                     : int(measurement['attributes']['Datum_neu'] or 0),
-                    'Fallzahl'                      : int(measurement['attributes']['Fallzahl'] or 0),
-                    'Genesungsfall'                 : int(measurement['attributes']['Genesungsfall'] or 0),
-                    'Hospitalisierung'              : int(measurement['attributes']['Hospitalisierung'] or 0),
-                    'Inzidenz'                      : float(measurement['attributes']['Inzidenz'] or 0),
-                    'ObjectId'                      : int(measurement['attributes']['ObjectId'] or 0),
-                    'Sterbefall'                    : int(measurement['attributes']['Sterbefall'] or 0),
-                    'Zuwachs_Fallzahl'              : int(measurement['attributes']['Zuwachs_Fallzahl'] or 0),
-                    'Zuwachs_Genesung'              : int(measurement['attributes']['Zuwachs_Genesung'] or 0),
-                    'Zuwachs_Krankenhauseinweisung' : int(measurement['attributes']['Zuwachs_Krankenhauseinweisung'] or 0),
-                    'Zuwachs_Sterbefall'            : int(measurement['attributes']['Zuwachs_Sterbefall'] or 0),
+                    'Anzeige_Indikator'             : str(point['attributes']['Anzeige_Indikator']), # value is either None or 'x'
+                    'BelegteBetten'                 : int(point['attributes']['BelegteBetten'] or 0), # replace NoneType with 0
+                    'Datum_neu'                     : int(point['attributes']['Datum_neu'] or 0),
+                    'Fallzahl'                      : int(point['attributes']['Fallzahl'] or 0),
+                    'Genesungsfall'                 : int(point['attributes']['Genesungsfall'] or 0),
+                    'Hospitalisierung'              : int(point['attributes']['Hospitalisierung'] or 0),
+                    'Inzidenz'                      : float(point['attributes']['Inzidenz'] or 0),
+                    'ObjectId'                      : int(point['attributes']['ObjectId'] or 0),
+                    'Sterbefall'                    : int(point['attributes']['Sterbefall'] or 0),
+                    'Zuwachs_Fallzahl'              : int(point['attributes']['Zuwachs_Fallzahl'] or 0),
+                    'Zuwachs_Genesung'              : int(point['attributes']['Zuwachs_Genesung'] or 0),
+                    'Zuwachs_Krankenhauseinweisung' : int(point['attributes']['Zuwachs_Krankenhauseinweisung'] or 0),
+                    'Zuwachs_Sterbefall'            : int(point['attributes']['Zuwachs_Sterbefall'] or 0),
                 }
             }
-            time_series.append(point)
+            time_series.append(point_dict)
 
         # write data to database
         db_client.write_points(time_series, time_precision='s')
-        logger.info('Time series successfully written to database.')
+        series_key = '{:s},pub_date={:s},pub_date_short={:s},script_version={:s}'.format(INFLUXDB_MEASUREMENT, influxdb_tag_pub_date, influxdb_tag_pub_date_short, influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
+        logger.info('Time series with key \'{:s}\' successfully written to database.'.format(series_key))
 
 if __name__ == '__main__':
     main()
