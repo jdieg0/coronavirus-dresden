@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # constants
-RELEASE = 'v0.2.1'
+RELEASE = 'v0.2.2'
 JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=json&where=ObjectId>=0&outFields=*'
 CACHED_JSON_FILENAME = 'cached.json'
 
@@ -159,8 +159,8 @@ def main():
                     'pub_date'          : influxdb_tag_pub_date,
                     'pub_date_short'    : influxdb_tag_pub_date_short,
                     'script_version'    : influxdb_tag_script_version,
-                    },
-                'time'          : int(dateutil.parser.parse(point['attributes'].pop('Datum'), dayfirst=True).replace(tzinfo=timezone.utc).timestamp()), # parse date, switch month and day, explicetely set UTC (InfluxDB uses UTC), otherwise local timezone is assumed; 'datetime.isoformat()': generate ISO 8601 formatted string (e. g. '2020-10-22T21:30:13.883657+00:00')
+                },
+                'time'          : int(dateutil.parser.parse(point['attributes']['Datum'], dayfirst=True).replace(tzinfo=timezone.utc).timestamp()), # parse date, switch month and day, explicetely set UTC (InfluxDB uses UTC), otherwise local timezone is assumed; 'datetime.isoformat()': generate ISO 8601 formatted string (e. g. '2020-10-22T21:30:13.883657+00:00')
                 'fields'        : { # in principle, a simple "point.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point written to a series (in case of this foreign data set, some fields are filled with NoneType); https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
                     # own fields
                     'pub_date_seconds'              : int(data_pub_date.timestamp()), # add better searchable UNIX timestamp in seconds in addition to the human readable 'pub_date' tag; https://docs.influxdata.com/influxdb/v2.0/reference/glossary/#unix-timestamp; POSIX timestamps in Python: https://stackoverflow.com/a/8778548/7192373
@@ -184,8 +184,15 @@ def main():
 
         # write data to database
         db_client.write_points(time_series, time_precision='s')
-        series_key = '{:s},pub_date={:s},pub_date_short={:s},script_version={:s}'.format(INFLUXDB_MEASUREMENT, influxdb_tag_pub_date, influxdb_tag_pub_date_short, influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
-        logger.info('Time series with key \'{:s}\' successfully written to database.'.format(series_key))
+
+        # save only latest noon data point in separate InfluxDB measurement
+        point_noon_data = time_series[-1]
+        point_noon_data['measurement'] = 'noon_increment'
+        time_series_noon_data = [point_noon_data]
+        db_client.write_points(time_series_noon_data, time_precision='s')
+
+        series_key = 'pub_date={:s},pub_date_short={:s},script_version={:s}'.format(influxdb_tag_pub_date, influxdb_tag_pub_date_short, influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
+        logger.info('Time series with tags \'{:s}\' successfully written to database.'.format(series_key))
 
 if __name__ == '__main__':
     main()
