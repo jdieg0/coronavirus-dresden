@@ -116,7 +116,6 @@ def main():
             logger.info('Found new data!')
         else:
             logger.info('Data has not changed, but is nevertheless collected as requested.')
-
         # save query date
         if args.date:
             try:
@@ -148,7 +147,7 @@ def main():
         # define tags of the time series
         influxdb_tag_pub_date = data_pub_date.strftime('%Y-%m-%dT%H:%M:%S') # date on which the record was published
         influxdb_tag_pub_date_short = data_pub_date.strftime('%d.%m.%Y') # shorter version for graph legend aliases in Grafana; https://grafana.com/docs/grafana/latest/datasources/influxdb/#alias-patterns
-        influxdb_tag_script_version = RELEASE # state version numer of this script
+        influxdb_tag_script_version = RELEASE # state version number of this script
 
         # generate time series list according to the expected InfluxDB line protocol: https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/
         time_series = []
