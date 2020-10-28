@@ -184,11 +184,19 @@ def main():
         # write data to database
         db_client.write_points(time_series, time_precision='s')
 
-        # save latest noon data point in separate InfluxDB measurement
-        """point_noon_data = time_series[-1]
-        point_noon_data['measurement'] = 'noon_increment'
-        time_series_noon_data = [point_noon_data]
-        db_client.write_points(time_series_noon_data, time_precision='s')"""
+        # do own calculations
+        # measurement that contains the daily 12 o'clock reports
+        point_latest = time_series[-1]
+        for key in ['pub_date', 'pub_date_short']:
+            del point_latest['tags'][key]
+        point_changes = {
+            'measurement'   : 'python',
+            'tags'          : {
+                'data_version'  : 'noon',
+            }
+        }
+        point_latest.update(point_changes)
+        db_client.write_points([point_latest], time_precision='s')
 
         series_key = 'pub_date={:s},pub_date_short={:s},script_version={:s}'.format(influxdb_tag_pub_date, influxdb_tag_pub_date_short, influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
         logger.info('Time series with tags \'{:s}\' successfully written to database.'.format(series_key))
