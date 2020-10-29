@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 # constants
 RELEASE = 'v0.2.2'
@@ -181,7 +182,7 @@ def main():
                     'Zuwachs_Genesung'              : int(point['attributes']['Zuwachs_Genesung'] or 0),
                     'Zuwachs_Krankenhauseinweisung' : int(point['attributes']['Zuwachs_Krankenhauseinweisung'] or 0),
                     'Zuwachs_Sterbefall'            : int(point['attributes']['Zuwachs_Sterbefall'] or 0),
-                }
+                },
             }
             time_series.append(point_dict)
 
@@ -191,13 +192,15 @@ def main():
         # do own calculations
         # measurement that contains the daily 12 o'clock reports
         point_latest = time_series[-1]
-        for key in ['pub_date', 'pub_date_short']:
-            del point_latest['tags'][key]
         point_changes = {
             'measurement'   : 'python',
             'tags'          : {
                 'data_version'  : 'noon',
-            }
+            },
+            'fields'    : { # convert some tags into fields
+                'pub_date'      : point_latest['tags'].pop('pub_date'),
+                'pub_date_short': point_latest['tags'].pop('pub_date_short'),
+            },
         }
         point_latest.update(point_changes)
         db_client.write_points([point_latest], time_precision='s')
