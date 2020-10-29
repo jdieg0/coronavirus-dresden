@@ -51,6 +51,7 @@ def setup():
     arggroup.add_argument('-d', '--date', help='set publishing date manually for the new data set, e. g. \'2020-10-18T09:52:41Z\'')
     argparser.add_argument('-f', '--file', help='load JSON data from a local file instead from server; if no publishing date is passed with the \'--date\' option, an attempt is made to read the date from the filename', nargs='?', type=argparse.FileType('r'), const='query.json') # default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
     argparser.add_argument('-l', '--log', help='save log in file \'{:s}\''.format(log_filename), action='store_true')
+    argparser.add_argument('-n', '--no-cache', help='suppress the saving of a JSON cache file (helpful if you do not want to mess with an active cron job looking for changes)', action='store_true')
     arggroup.add_argument('-t', '--auto-date', help='do not try to to parse the publishing date from the filename, instead write current date (UTC) to database', action='store_true')
     argparser.add_argument('-v', '--verbose', help='print debug messages', action='store_true')
 
@@ -135,8 +136,9 @@ def main():
             data_pub_date = datetime.now(tz=timezone.utc) # otherwise use current time
 
         # cache JSON file
-        with open(json_file_path, 'w') as json_file:
-            json.dump(data, json_file)
+        if not args.no_cache:
+            with open(json_file_path, 'w') as json_file:
+                json.dump(data, json_file)
         # archive JSON file
         if args.archive_json:
             archive_file_dir = pathlib.Path(abs_python_file_dir, 'json-archive')
