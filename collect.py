@@ -163,19 +163,20 @@ def main():
                 'fields'        : { # in principle, a simple "point.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point written to a series (in case of this foreign data set, some fields are filled with NoneType); https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
                     # own fields
                     'pub_date_seconds'              : int(data_pub_date.timestamp()), # add better searchable UNIX timestamp in seconds in addition to the human readable 'pub_date' tag; https://docs.influxdata.com/influxdb/v2.0/reference/glossary/#unix-timestamp; POSIX timestamps in Python: https://stackoverflow.com/a/8778548/7192373
+                    'Meldedatum_or_Zuwachs'         : int(point['attributes'].get('Fälle_Meldedatum', point['attributes']['Zuwachs_Fallzahl']) or 0), # Get the field 'Fälle_Meldedatum' that was introduced by the city on 29.10.2020, for older data sets use the field 'Zuwachs_Fallzahl'
                     # fields from data source
                     'Anzeige_Indikator'             : str(point['attributes']['Anzeige_Indikator']), # value is either None or 'x'
                     'BelegteBetten'                 : int(point['attributes']['BelegteBetten'] or 0), # replace NoneType with 0
                     'Datum'                         : str(point['attributes']['Datum']),
                     'Datum_neu'                     : int(point['attributes']['Datum_neu'] or 0),
                     'Fallzahl'                      : int(point['attributes']['Fallzahl'] or 0),
-                    "Fälle_Meldedatum"              : int(point['attributes']['Fälle_Meldedatum'] or 0),
+                    'Fälle_Meldedatum'              : int(point['attributes'].get('Fälle_Meldedatum') or 0),
                     'Genesungsfall'                 : int(point['attributes']['Genesungsfall'] or 0),
                     'Hospitalisierung'              : int(point['attributes']['Hospitalisierung'] or 0),
                     'Inzidenz'                      : float(point['attributes']['Inzidenz'] or 0),
                     'ObjectId'                      : int(point['attributes']['ObjectId'] or 0),
                     'Sterbefall'                    : int(point['attributes']['Sterbefall'] or 0),
-                    'Zeitraum'                      : str(point['attributes']['Zeitraum']),
+                    'Zeitraum'                      : str(point['attributes'].get('Zeitraum')),
                     'Zuwachs_Fallzahl'              : int(point['attributes']['Zuwachs_Fallzahl'] or 0),
                     'Zuwachs_Genesung'              : int(point['attributes']['Zuwachs_Genesung'] or 0),
                     'Zuwachs_Krankenhauseinweisung' : int(point['attributes']['Zuwachs_Krankenhauseinweisung'] or 0),
