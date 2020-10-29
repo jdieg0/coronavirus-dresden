@@ -112,24 +112,38 @@ def main():
             logger.debug('Downloaded JSON data from server.')
    
     # get current date from system and latest entry date from the data set
-    data_load_date = datetime.utcnow()
+    data_load_date = datetime.now(tz=timezone.utc)
     midnight = data_load_date.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
     data_latest_date = datetime.fromtimestamp(data['features'][-1]['attributes']['Datum_neu']/1000, tz=timezone.utc) # date from last entry in data set
-            
-        
+    try:
+        cached_data_latest_date = datetime.fromtimestamp(cached_data['features'][-1]['attributes']['Datum_neu']/1000, tz=timezone.utc)
+    except KeyError:
+        cached_data_latest_date = datetime(1970, 1, 1) # use default date if no cached data is available
     # check whether downloaded JSON contains new data or user enforced data collection 
     if data == cached_data and not args.force_collect:
         logger.info('Data has not changed.')
     else:
         if data != cached_data:
-            if data_latest_date.timestamp() >= midnight.timestamp():
-                # last entry is dated today
-                logger.info('Data for today has changed!')
-            else:
-                # last date is dated before today
-                logger.info('Data has changed, but last entry is not from today.')
+            # check whether data contains a new or updated day
+            if data_latest_date >= midnight and data_latest_date != cached_data_latest_date:
+                data_change = 'added'
+                logger.info('New data for today has been found!')
+            elif data_latest_date >= midnight and data_latest_date == cached_data_latest_date:
+                data_change = 'updated'
+                logger.info('Updated for today has been found!')
+            elif data_latest_date < midnight and data_latest_date != cached_data_latest_date:
+                data_change = 'added'
+                logger.info('New data for a previous day has been found!')
+            elif data_latest_date < midnight and data_latest_date == cached_data_latest_date:
+                data_change = 'updated'
+                logger.info('Updated data for a previous day has been found!')
         else:
-            logger.info('Data has not changed, but is nevertheless collected as requested.')
+            # '--force-collect'
+            data_change = 'updated'
+            if data_latest_date >= midnight:
+                logger.info('Data for today has not been changed, but is nevertheless collected as requested.')
+            else:
+                logger.info('Data for a previous day has not been changed, but is nevertheless collected as requested.')
 
         # save query date
         if args.date:
@@ -230,7 +244,11 @@ def main():
         db_client.write_points([point_latest], time_precision='s')
 
         series_key = 'latest_date_short={:s},script_version={:s}'.format(influxdb_tag_latest_date_short, influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
-        logger.info('Time series with tags \'{:s}\' successfully written to database.'.format(series_key))
+        
+        if data_change == 'added':
+            logger.info('Time series with tags \'{:s}\' successfully added to database.'.format(series_key))
+        elif data_change == 'updated':
+            logger.info('Time series with tags \'{:s}\' successfully updated in database.'.format(series_key))
 
 if __name__ == '__main__':
     main()
