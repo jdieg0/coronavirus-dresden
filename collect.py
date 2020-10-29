@@ -194,19 +194,22 @@ def main():
         # do own calculations
         # measurement that contains the daily 12 o'clock reports
         point_latest = time_series[-1]
-        point_changes = {
+
+        field_changes = { # convert some tags into fields (dict depth = 1)
+            'pub_date'      : point_latest['tags']['pub_date'],
+            'pub_date_short': point_latest['tags']['pub_date_short'],
+        }
+        point_latest['fields'].update(field_changes)
+
+        point_changes = { # replace measurement name and tags (dict depth = 0)
             'measurement'   : 'python',
             'tags'          : {
                 'data_version'  : 'noon',
             },
-            'fields'    : { # convert some tags into fields
-                'pub_date'      : point_latest['tags'].pop('pub_date'),
-                'pub_date_short': point_latest['tags'].pop('pub_date_short'),
-            },
         }
         point_latest.update(point_changes)
-        db_client.write_points([point_latest], time_precision='s')
 
+        db_client.write_points([point_latest], time_precision='s')
         series_key = 'pub_date={:s},pub_date_short={:s},script_version={:s}'.format(influxdb_tag_pub_date, influxdb_tag_pub_date_short, influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
         logger.info('Time series with tags \'{:s}\' successfully written to database.'.format(series_key))
 
