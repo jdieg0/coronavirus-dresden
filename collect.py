@@ -166,13 +166,16 @@ def main():
                     # fields from data source
                     'Anzeige_Indikator'             : str(point['attributes']['Anzeige_Indikator']), # value is either None or 'x'
                     'BelegteBetten'                 : int(point['attributes']['BelegteBetten'] or 0), # replace NoneType with 0
+                    'Datum'                         : str(point['attributes']['Datum']),
                     'Datum_neu'                     : int(point['attributes']['Datum_neu'] or 0),
                     'Fallzahl'                      : int(point['attributes']['Fallzahl'] or 0),
+                    "Fälle_Meldedatum"              : int(point['attributes']['Fälle_Meldedatum'] or 0),
                     'Genesungsfall'                 : int(point['attributes']['Genesungsfall'] or 0),
                     'Hospitalisierung'              : int(point['attributes']['Hospitalisierung'] or 0),
                     'Inzidenz'                      : float(point['attributes']['Inzidenz'] or 0),
                     'ObjectId'                      : int(point['attributes']['ObjectId'] or 0),
                     'Sterbefall'                    : int(point['attributes']['Sterbefall'] or 0),
+                    'Zeitraum'                      : str(point['attributes']['Zeitraum']),
                     'Zuwachs_Fallzahl'              : int(point['attributes']['Zuwachs_Fallzahl'] or 0),
                     'Zuwachs_Genesung'              : int(point['attributes']['Zuwachs_Genesung'] or 0),
                     'Zuwachs_Krankenhauseinweisung' : int(point['attributes']['Zuwachs_Krankenhauseinweisung'] or 0),
