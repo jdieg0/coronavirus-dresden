@@ -9,6 +9,8 @@ This script collects official infection statistics published by the city of Dres
 
 Subsequent changes to the published data set can also be detected and routinely logged.
 
+**Data sets are archived [here](https://github.com/jdieg0/coronavirus-dresden-data).**
+
 ## Data source
 
 The raw data provided by the [city of Dresden](https://www.dresden.de/de/leben/gesundheit/hygiene/infektionsschutz/corona.php) and visualised on their [Dashboard](https://stva-dd.maps.arcgis.com/apps/opsdashboard/index.html#/3eef863531024aa4ad0c4ac94adc58e0) is obtained from the following source:
@@ -17,16 +19,30 @@ The raw data provided by the [city of Dresden](https://www.dresden.de/de/leben/g
 - [Web form for queries](https://services.arcgis.com/ORpvigFPJUhb8RDF/ArcGIS/rest/services/corona_DD_7_Sicht/FeatureServer/query)
 - [Download the latest JSON dump](https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=json&where=ObjectId>=0&outFields=*)
 
-Data is available under an open licence compatible with CC-BY: *Landeshauptstadt Dresden, [dl-de/by-2-0](https://www.govdata.de/dl-de/by-2-0), [opendata.dresden.de](https://opendata.dresden.de/)*.
+Data is [available](https://github.com/jdieg0/coronavirus-dresden-data) under an open licence compatible with CC-BY: *Landeshauptstadt Dresden, [dl-de/by-2-0](https://www.govdata.de/dl-de/by-2-0), [opendata.dresden.de](https://opendata.dresden.de/)*.
 
 ## Install
 
-Using a virtual environment of your choice is recommended. An exemplary installation with ```venv``` is described below.
+Get this repository:
+
+    git clone https://github.com/jdieg0/coronavirus-dresden.git
+
+If desired, the data archive can be retrieved with:
+
+    cd coronavirus-dresden
+    git submodule update --init --recursive
+
+If you want to load new data in the future, ```git pull``` inside the subdirectory:
+
+    cd data
+    git checkout main
+    git pull
+
+Using a virtual environment of your choice for Python is recommended. An exemplary installation with ```venv``` is described below.
 
 ### venv (recommended)
 
-    git clone https://github.com/jdieg0/coronavirus-dresden.git
-    cd coronavirus-dresden
+Set up Python environment:
 
 	python3 -m venv venv
 	source venv/bin/activate
