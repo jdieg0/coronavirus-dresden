@@ -174,8 +174,9 @@ def main():
                 json.dump(data, json_file)
 
         # define tags of the time series
-        influxdb_pub_date = data_load_date.strftime('%Y-%m-%dT%H:%M:%S') # date on which the record was published
-        influxdb_tag_latest_date_short = data_latest_date.strftime('%d.%m.%Y') # shorter version for graph legend aliases in Grafana; https://grafana.com/docs/grafana/latest/datasources/influxdb/#alias-patterns
+        influxdb_pub_date = data_load_date # date on which the record was published
+        influxdb_tag_latest_date_short = data_latest_date # shorter version for graph legend aliases in Grafana; https://grafana.com/docs/grafana/latest/datasources/influxdb/#alias-patterns
+        influxdb_field_latest_date = data_latest_date
         influxdb_tag_script_version = RELEASE # state version number of this script
 
         # generate time series list according to the expected InfluxDB line protocol: https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/
@@ -185,15 +186,16 @@ def main():
                 point_dict = {
                     'measurement'   : influx_db_measurement,
                     'tags'          : { # metadata for the data point
-                        'pub_date_short'    : influxdb_tag_latest_date_short, # legacy name for the date of the latest time series entry, not actually the publishing date
-                        'latest_date_short' : influxdb_tag_latest_date_short, # more accurate name for the date used
+                        'pub_date_short'    : influxdb_tag_latest_date_short.strftime('%d.%m.%Y'), # legacy name for the date of the latest time series entry, not actually the publishing date
+                        'latest_date_short' : influxdb_tag_latest_date_short.strftime('%d.%m.%Y'), # more accurate name for the date used
                         'script_version'    : influxdb_tag_script_version,
                     },
                     'time'          : int(dateutil.parser.parse(point['attributes']['Datum'], dayfirst=True).replace(tzinfo=timezone.utc).timestamp()), # parse date, switch month and day, explicetely set UTC (InfluxDB uses UTC), otherwise local timezone is assumed; 'datetime.isoformat()': generate ISO 8601 formatted string (e. g. '2020-10-22T21:30:13.883657+00:00')
                     'fields'        : { # in principle, a simple "point.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point written to a series (in case of this foreign data set, some fields are filled with NoneType); https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
                         # own fields
-                        'pub_date'                      : influxdb_pub_date,
-                        'pub_date_seconds'              : int(data_load_date.timestamp()), # add better searchable UNIX timestamp in seconds in addition to the human readable 'pub_date' tag; https://docs.influxdata.com/influxdb/v2.0/reference/glossary/#unix-timestamp; POSIX timestamps in Python: https://stackoverflow.com/a/8778548/7192373
+                        'pub_date'                      : influxdb_pub_date.strftime('%Y-%m-%dT%H:%M:%S'),
+                        'pub_date_seconds'              : int(influxdb_field_latest_date.timestamp()), # legacy name, same as 'latest_date_seconds'
+                        'latest_date_seconds'           : int(influxdb_field_latest_date.timestamp()), # add better searchable UNIX timestamp in seconds in addition to the human readable 'latest_date_short' tag; https://docs.influxdata.com/influxdb/v2.0/reference/glossary/#unix-timestamp; POSIX timestamps in Python: https://stackoverflow.com/a/8778548/7192373
                         'Meldedatum_or_Zuwachs'         : int(point['attributes'].get('Fälle_Meldedatum', point['attributes']['Zuwachs_Fallzahl']) or 0), # Get the field 'Fälle_Meldedatum' that was introduced by the city on 29.10.2020, for older data sets use the field 'Zuwachs_Fallzahl'
                         # fields from data source
                         'Anzeige_Indikator'             : str(point['attributes']['Anzeige_Indikator']), # value is either None or 'x'
