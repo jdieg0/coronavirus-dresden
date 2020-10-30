@@ -17,9 +17,7 @@ The raw data provided by the [city of Dresden](https://www.dresden.de/de/leben/g
 - [Web form for queries](https://services.arcgis.com/ORpvigFPJUhb8RDF/ArcGIS/rest/services/corona_DD_7_Sicht/FeatureServer/query)
 - [Download the latest JSON dump](https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=json&where=ObjectId>=0&outFields=*)
 
-Data is available under an open licence compatible with CC-BY:
-
-```Landeshauptstadt Dresden, ```[```dl-de/by-2-0```](https://www.govdata.de/dl-de/by-2-0)```, ```[```opendata.dresden.de```](https://opendata.dresden.de/)
+Data is available under an open licence compatible with CC-BY: *Landeshauptstadt Dresden, [dl-de/by-2-0](https://www.govdata.de/dl-de/by-2-0), [opendata.dresden.de](https://opendata.dresden.de/)*.
 
 ## Install
 
