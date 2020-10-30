@@ -130,7 +130,7 @@ def main():
                 logger.info('New data for today has been found!')
             elif data_latest_date >= midnight and data_latest_date == cached_data_latest_date:
                 data_change = 'updated'
-                logger.info('Updated for today has been found!')
+                logger.info('Updated data for today has been found!')
             elif data_latest_date < midnight and data_latest_date != cached_data_latest_date:
                 data_change = 'added'
                 logger.info('New data for a previous day has been found!')
@@ -244,6 +244,7 @@ def main():
         point_latest.update(point_changes)
 
         db_client.write_points([point_latest], time_precision='s')
+        embed();exit()
 
         series_key = 'latest_date_short={:s},script_version={:s}'.format(influxdb_tag_latest_date_short, influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
         
