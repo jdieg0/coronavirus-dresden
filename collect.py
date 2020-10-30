@@ -244,7 +244,6 @@ def main():
         point_latest.update(point_changes)
 
         db_client.write_points([point_latest], time_precision='s')
-        embed();exit()
 
         series_key = 'latest_date_short={:s},script_version={:s}'.format(influxdb_tag_latest_date_short, influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
         
