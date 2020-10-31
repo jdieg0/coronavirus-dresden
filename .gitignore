@@ -131,8 +131,9 @@ dmypy.json
 # VS Code
 .vscode
 
-# Temporary JSON files
-*.json
+# JSON files
+cached.json
+json-archive
 
 # macOS
 .DS_Store
