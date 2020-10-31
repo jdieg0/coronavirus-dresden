@@ -1,6 +1,6 @@
 # Coronavirus Dresden
 
-[![Go to data](https://img.shields.io/badge/corona-data-yellow)](https://github.com/jdieg0/coronavirus-dresden-data)
+[![Go to data](https://img.shields.io/badge/corona-code-yellow)](https://github.com/jdieg0/coronavirus-dresden-data)
 [![License](https://img.shields.io/github/license/jdieg0/coronavirus-dresden)](https://github.com/jdieg0/coronavirus-dresden/blob/main/LICENSE)
 [![Release](https://img.shields.io/github/v/release/jdieg0/coronavirus-dresden)](https://github.com/jdieg0/coronavirus-dresden/releases)
 
