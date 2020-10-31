@@ -5,6 +5,7 @@
 RELEASE = 'v0.3.0'
 JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=pjson&where=ObjectId>=0&outFields=*'
 CACHED_JSON_FILENAME = 'cached.json'
+JSON_ARCHIVE_FOLDER = 'json-archive'
 
 INFLUXDB_DATABASE = 'corona_dd'
 INFLUXDB_MEASUREMENTS = ['dresden_official', 'dresden_official_all'] # all measurements to be saved
@@ -117,7 +118,7 @@ def main():
     data_latest_date = datetime.fromtimestamp(data['features'][-1]['attributes']['Datum_neu']/1000, tz=timezone.utc) # date from last entry in data set
     try:
         cached_data_latest_date = datetime.fromtimestamp(cached_data['features'][-1]['attributes']['Datum_neu']/1000, tz=timezone.utc)
-    except KeyError:
+    except TypeError:
         cached_data_latest_date = datetime(1970, 1, 1) # use default date if no cached data is available
     # check whether downloaded JSON contains new data or user enforced data collection 
     if data == cached_data and not args.force_collect:
@@ -164,14 +165,21 @@ def main():
         # cache JSON file
         if not args.no_cache:
             with open(json_file_path, 'w') as json_file:
-                json.dump(data, json_file)
+                json.dump(data, json_file, indent=2)
         # archive JSON file
         if args.archive_json:
-            archive_file_dir = pathlib.Path(abs_python_file_dir, 'json-archive')
-            pathlib.Path.mkdir(archive_file_dir, exist_ok=True)
-            archive_file_path = pathlib.Path(archive_file_dir, '{:s}.json'.format(data_load_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
-            with open(archive_file_path, 'w') as json_file:
-                json.dump(data, json_file)
+            # Save JSON data in different styles
+            json_styles = {
+                #'subfolder'    : JSON indent parameter; https://stackabuse.com/reading-and-writing-json-to-a-file-in-python/
+                'json'          : None, # save JSON without line breaks and indentation for better processing performance; https://geobern.blogspot.com/2017/02/the-difference-between-json-and-pjson.html
+                'pjson'         : 2, # make JSON human readable by pretty printing
+            }
+            for folder, indent in json_styles.items():
+                archive_file_dir = pathlib.Path(abs_python_file_dir, JSON_ARCHIVE_FOLDER, folder)
+                pathlib.Path.mkdir(archive_file_dir, exist_ok=True)
+                archive_file_path = pathlib.Path(archive_file_dir, '{:s}.json'.format(data_load_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
+                with open(archive_file_path, 'w') as json_file:
+                    json.dump(data, json_file, indent=indent)
 
         # define tags of the time series
         influxdb_pub_date = data_load_date # date on which the record was published
