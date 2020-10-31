@@ -218,7 +218,7 @@ def main():
                 }
                 if influx_db_measurement == INFLUXDB_MEASUREMENT_ARCHIVE:
                     # save every time series, including all corrections of the city of the same day, in an separate InfluxDB measurement, distiguishable by a 'pub_date' tag (containing exact date and time)
-                    point_dict['tags']['pub_date'] = influxdb_pub_date
+                    point_dict['tags']['pub_date'] = influxdb_pub_date.strftime('%Y-%m-%dT%H:%M:%SZ')
 
                 time_series.append(point_dict)
 
