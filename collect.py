@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # constants
-RELEASE = 'v0.2.2'
+RELEASE = 'v0.3.0'
 JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=json&where=ObjectId>=0&outFields=*'
 CACHED_JSON_FILENAME = 'cached.json'
 
