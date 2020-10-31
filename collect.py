@@ -245,8 +245,8 @@ def main():
 
         db_client.write_points([point_latest], time_precision='s')
 
-        series_key = 'latest_date_short={:s},script_version={:s}'.format(influxdb_tag_latest_date_short, influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
-        
+        series_key = 'latest_date_short={:s},script_version={:s}'.format(influxdb_tag_latest_date_short.strftime('%d.%m.%Y'), influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
+
         if data_change == 'added':
             logger.info('Time series with tags \'{:s}\' successfully added to database.'.format(series_key))
         elif data_change == 'updated':
