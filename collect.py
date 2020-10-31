@@ -8,7 +8,7 @@ CACHED_JSON_FILENAME = 'cached.json'
 
 INFLUXDB_DATABASE = 'corona_dd'
 INFLUXDB_MEASUREMENTS = ['dresden_official', 'dresden_official_all'] # all measurements to be saved
-INFLUXDB_MEASUREMENT_ARCHIVE = 'dresden_official_all' # measurements that contains all series (latest of the day as well as all corrections by the city)
+INFLUXDB_MEASUREMENT_ARCHIVE = 'dresden_official_all' # measurement that contains all series (latest of the day as well as all corrections by the city)
 
 import sys
 
