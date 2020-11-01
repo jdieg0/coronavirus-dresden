@@ -194,9 +194,10 @@ def main():
                 point_dict = {
                     'measurement'   : influx_db_measurement,
                     'tags'          : { # metadata for the data point
-                        'pub_date_short'    : influxdb_tag_latest_date_short.strftime('%d.%m.%Y'), # legacy name for the date of the latest time series entry, not actually the publishing date
-                        'latest_date_short' : influxdb_tag_latest_date_short.strftime('%d.%m.%Y'), # more accurate name for the date used
-                        'script_version'    : influxdb_tag_script_version,
+                        '01_latest_date_short_ymd'  : influxdb_tag_latest_date_short.strftime('%Y-%m-%d'), # other date format that is sorted correctly by InfluxDB; '01': display this tag first in InfluxDB queries
+                        'latest_date_short'         : influxdb_tag_latest_date_short.strftime('%d.%m.%Y'), # more accurate name for the date used
+                        'pub_date_short'            : influxdb_tag_latest_date_short.strftime('%d.%m.%Y'), # legacy name for the date of the latest time series entry, not actually the publishing date
+                        'script_version'            : influxdb_tag_script_version,
                     },
                     'time'          : int(dateutil.parser.parse(point['attributes']['Datum'], dayfirst=True).replace(tzinfo=timezone.utc).timestamp()), # parse date, switch month and day, explicetely set UTC (InfluxDB uses UTC), otherwise local timezone is assumed; 'datetime.isoformat()': generate ISO 8601 formatted string (e. g. '2020-10-22T21:30:13.883657+00:00')
                     'fields'        : { # in principle, a simple "point.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point written to a series (in case of this foreign data set, some fields are filled with NoneType); https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
@@ -238,8 +239,9 @@ def main():
         point_latest = time_series[-1]
 
         field_changes = { # convert some tags into fields (dict depth = 1)
-            'pub_date_short'    : point_latest['tags']['latest_date_short'], # legacy name for compatibility reasons
-            'latest_date_short' : point_latest['tags']['latest_date_short'], # more accurate name
+            '01_latest_date_short_ymd'  : point_latest['tags']['01_latest_date_short_ymd'],
+            'latest_date_short'         : point_latest['tags']['latest_date_short'], # more accurate name
+            'pub_date_short'            : point_latest['tags']['latest_date_short'], # legacy name for compatibility reasons
         }
         point_latest['fields'].update(field_changes)
 
