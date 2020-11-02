@@ -32,7 +32,10 @@ import json
 
 # date parsing
 import dateutil.parser
-from datetime import datetime, timezone
+import datetime
+
+# dicts
+import copy
 
 # database
 from influxdb import InfluxDBClient
@@ -54,6 +57,7 @@ def setup():
     argparser.add_argument('-f', '--file', help='load JSON data from a local file instead from server; if no publishing date is passed with the \'--date\' option, an attempt is made to read the date from the filename', nargs='?', type=argparse.FileType('r'), const='query.json') # default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
     argparser.add_argument('-l', '--log', help='save log in file \'{:s}\''.format(log_filename), action='store_true')
     argparser.add_argument('-n', '--no-cache', help='suppress the saving of a JSON cache file (helpful if you do not want to mess with an active cron job looking for changes)', action='store_true')
+    argparser.add_argument('-s', '--skip-influxdb', help='check for and write new JSON data only, do not write to InfluxDB', action='store_true')
     arggroup.add_argument('-t', '--auto-date', help='do not try to to parse the publishing date from the filename, instead write current date (UTC) to database', action='store_true')
     argparser.add_argument('-v', '--verbose', help='print debug messages', action='store_true')
 
@@ -86,10 +90,11 @@ def setup():
         logger.addHandler(handler)
 
     # setup DB connection
-    global db_client
-    db_client = InfluxDBClient(host='localhost', port=8086) # https://www.influxdata.com/blog/getting-started-python-influxdb/
-    db_client.create_database(INFLUXDB_DATABASE)
-    db_client.switch_database(INFLUXDB_DATABASE)
+    if not args.skip_influxdb:
+        global db_client
+        db_client = InfluxDBClient(host='localhost', port=8086) # https://www.influxdata.com/blog/getting-started-python-influxdb/
+        db_client.create_database(INFLUXDB_DATABASE)
+        db_client.switch_database(INFLUXDB_DATABASE)
 
 def main():
     setup()
@@ -113,13 +118,13 @@ def main():
             logger.debug('Downloaded JSON data from server.')
    
     # get current date from system and latest entry date from the data set
-    data_load_date = datetime.now(tz=timezone.utc)
+    data_load_date = datetime.datetime.now(tz=datetime.timezone.utc)
     midnight = data_load_date.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
-    data_latest_date = datetime.fromtimestamp(data['features'][-1]['attributes']['Datum_neu']/1000, tz=timezone.utc) # date from last entry in data set
+    data_latest_date = datetime.datetime.fromtimestamp(data['features'][-1]['attributes']['Datum_neu']/1000, tz=datetime.timezone.utc) # date from last entry in data set
     try:
-        cached_data_latest_date = datetime.fromtimestamp(cached_data['features'][-1]['attributes']['Datum_neu']/1000, tz=timezone.utc)
+        cached_data_latest_date = datetime.datetime.fromtimestamp(cached_data['features'][-1]['attributes']['Datum_neu']/1000, tz=datetime.timezone.utc)
     except TypeError:
-        cached_data_latest_date = datetime(1970, 1, 1) # use default date if no cached data is available
+        cached_data_latest_date = datetime.datetime(1970, 1, 1) # use default date if no cached data is available
     # check whether downloaded JSON contains new data or user enforced data collection 
     if data == cached_data and not args.force_collect:
         logger.info('Data has not changed.')
@@ -181,6 +186,10 @@ def main():
                 with open(archive_file_path, 'w') as json_file:
                     json.dump(data, json_file, indent=indent)
 
+        if args.skip_influxdb:
+            logger.info('Skipping writing to InfluxDB.')
+            sys.exit()
+
         # define tags of the time series
         influxdb_pub_date = data_load_date # date on which the record was published
         influxdb_tag_latest_date_short = data_latest_date # shorter version for graph legend aliases in Grafana; https://grafana.com/docs/grafana/latest/datasources/influxdb/#alias-patterns
@@ -190,7 +199,14 @@ def main():
         # generate time series list according to the expected InfluxDB line protocol: https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/
         for influx_db_measurement in INFLUXDB_MEASUREMENTS:
             time_series = []
+            time_series_2 = []
+            new_time_series_corrected_total = []
             for point in data['features']:
+                #if influx_db_measurement == 'dresden_official_shifted':
+                #    time = dateutil.parser.parse(point['attributes']['Datum'], dayfirst=True).replace(tzinfo=datetime.timezone.utc) + datetime.timedelta(days=1)
+                #else:
+                #   time = dateutil.parser.parse(point['attributes']['Datum'], dayfirst=True).replace(tzinfo=datetime.timezone.utc)
+                time = dateutil.parser.parse(point['attributes']['Datum'], dayfirst=True).replace(tzinfo=datetime.timezone.utc)
                 point_dict = {
                     'measurement'   : influx_db_measurement,
                     'tags'          : { # metadata for the data point
@@ -199,7 +215,7 @@ def main():
                         'pub_date_short'            : influxdb_tag_latest_date_short.strftime('%d.%m.%Y'), # legacy name for the date of the latest time series entry, not actually the publishing date
                         'script_version'            : influxdb_tag_script_version,
                     },
-                    'time'          : int(dateutil.parser.parse(point['attributes']['Datum'], dayfirst=True).replace(tzinfo=timezone.utc).timestamp()), # parse date, switch month and day, explicetely set UTC (InfluxDB uses UTC), otherwise local timezone is assumed; 'datetime.isoformat()': generate ISO 8601 formatted string (e. g. '2020-10-22T21:30:13.883657+00:00')
+                    'time'          : int(time.timestamp()), # parse date, switch month and day, explicetely set UTC (InfluxDB uses UTC), otherwise local timezone is assumed; 'datetime.datetime.isoformat()': generate ISO 8601 formatted string (e. g. '2020-10-22T21:30:13.883657+00:00')
                     'fields'        : { # in principle, a simple "point.pop('attributes')" also works, but unfortunately the field datatype is defined by the first point written to a series (in case of this foreign data set, some fields are filled with NoneType); https://github.com/influxdata/influxdb/issues/3460#issuecomment-124747104
                         # own fields
                         'pub_date'                      : influxdb_pub_date.strftime('%Y-%m-%dT%H:%M:%S'),
@@ -225,35 +241,65 @@ def main():
                         'Zuwachs_Sterbefall'            : int(point['attributes']['Zuwachs_Sterbefall'] or 0),
                     },
                 }
+
                 if influx_db_measurement == INFLUXDB_MEASUREMENT_ARCHIVE:
                     # save every time series, including all corrections of the city of the same day, in an separate InfluxDB measurement, distiguishable by a 'pub_date' tag (containing exact date and time)
                     point_dict['tags']['pub_date'] = influxdb_pub_date.strftime('%Y-%m-%dT%H:%M:%SZ')
-
                 time_series.append(point_dict)
+                
+                # backdated processed cases 0-24 o'clock
+                #if influx_db_measurement == 'dresden_official':
+                previous_day = time - datetime.timedelta(days=1)
+                total_cases_reporting_date = {
+                    'time'      : int(previous_day.timestamp()),
+                    'fields'    : {
+                        'Fallzahl_Meldedatum'   : point_dict['fields']['Fallzahl'] - point_dict['fields']['Meldedatum_or_Zuwachs'], # calculate the actual number of cases without the report of the following day by 12 noon
+                    },
+                }
+
+                new_time_series_corrected_total.append(total_cases_reporting_date) # save for later for the "python" measurement
+                point_dict2 = copy.deepcopy(point_dict)
+                point_dict2.update(total_cases_reporting_date) # take the old dict as a template and overwrite fields with only this single field
+                time_series_2.append(point_dict2)
+
+            # add today's reported cases (until 12 o'clock)
+            total_cases_reporting_date = {
+                'time'      : int(time.timestamp()),
+                'fields'    : {
+                    'Fallzahl_Meldedatum'   : point_dict['fields']['Fallzahl'],
+                },
+            }
+            point_dict2.update(total_cases_reporting_date)
+            time_series_2.append(point_dict2)
 
             # write data to database
             db_client.write_points(time_series, time_precision='s')
+            db_client.write_points(time_series_2, time_precision='s')
 
         # do own calculations
-        # measurement that contains the daily 12 pm reports
-        point_latest = time_series[-1]
-
-        field_changes = { # convert some tags into fields (dict depth = 1)
-            '01_latest_date_short_ymd'  : point_latest['tags']['01_latest_date_short_ymd'],
-            'latest_date_short'         : point_latest['tags']['latest_date_short'], # more accurate name
-            'pub_date_short'            : point_latest['tags']['latest_date_short'], # legacy name for compatibility reasons
+        # measurement that contains the daily 12 pm reports (last point of each day)
+        new_time_series_point = time_series[-1]
+        # convert some tags into fields (dict depth = 1)
+        field_changes = {
+            '01_latest_date_short_ymd'  : new_time_series_point['tags']['01_latest_date_short_ymd'],
+            'pub_date_short'            : new_time_series_point['tags']['latest_date_short'], # legacy name for compatibility reasons
+            'latest_date_short'         : new_time_series_point['tags']['latest_date_short'], # more accurate name
+            'Fallzahl_Meldedatum'       : new_time_series_point['fields']['Fallzahl'] # add today's reported cases (until 12 o'clock)
         }
-        point_latest['fields'].update(field_changes)
-
-        point_changes = { # replace measurement name and tags (dict depth = 0)
+        new_time_series_point['fields'].update(field_changes)
+        # replace measurement name and tags (dict depth = 0)
+        new_time_series_point_metadata = {
             'measurement'   : 'python',
             'tags'          : {
                 'data_version'  : 'noon',
             },
         }
-        point_latest.update(point_changes)
+        new_time_series_point.update(new_time_series_point_metadata) # add metadata
+        db_client.write_points([new_time_series_point], time_precision='s')
 
-        db_client.write_points([point_latest], time_precision='s')
+        new_time_series_corrected_total_previous_day = new_time_series_corrected_total[-1]
+        new_time_series_corrected_total_previous_day.update(new_time_series_point_metadata)
+        db_client.write_points([new_time_series_corrected_total_previous_day], time_precision='s')
 
         series_key = 'latest_date_short={:s},script_version={:s}'.format(influxdb_tag_latest_date_short.strftime('%d.%m.%Y'), influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
 
