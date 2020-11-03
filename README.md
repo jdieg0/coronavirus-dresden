@@ -92,6 +92,10 @@ Add the following line to run the script every 5 minutes (adapt paths to suit yo
 
     */5 * * * * /root/bin/coronavirus-dresden/venv/bin/python /root/bin/coronavirus-dresden/collect.py --log --archive-json
 
+If you just want to routinely save new published JSON files and are not interested in saving the data to InfluxDB, you can do this by typing:
+
+    python collect.py --skip-influxdb
+
 ### Command line arguments
 
 To display all data collection options, type:

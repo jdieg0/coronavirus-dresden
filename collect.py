@@ -231,9 +231,11 @@ def main():
                         'Fälle_Meldedatum'              : int(point['attributes'].get('Fälle_Meldedatum') or 0),
                         'Genesungsfall'                 : int(point['attributes']['Genesungsfall'] or 0),
                         'Hospitalisierung'              : int(point['attributes']['Hospitalisierung'] or 0),
+                        'Hosp_Meldedatum'               : int(point['attributes'].get('Hosp_Meldedatum') or 0),
                         'Inzidenz'                      : float(point['attributes']['Inzidenz'] or 0),
                         'ObjectId'                      : int(point['attributes']['ObjectId'] or 0),
                         'Sterbefall'                    : int(point['attributes']['Sterbefall'] or 0),
+                        'SterbeF_Meldedatum'            : int(point['attributes'].get('SterbeF_Meldedatum') or 0),
                         'Zeitraum'                      : str(point['attributes'].get('Zeitraum')),
                         'Zuwachs_Fallzahl'              : int(point['attributes']['Zuwachs_Fallzahl'] or 0),
                         'Zuwachs_Genesung'              : int(point['attributes']['Zuwachs_Genesung'] or 0),
@@ -246,9 +248,8 @@ def main():
                     # save every time series, including all corrections of the city of the same day, in an separate InfluxDB measurement, distiguishable by a 'pub_date' tag (containing exact date and time)
                     point_dict['tags']['pub_date'] = influxdb_pub_date.strftime('%Y-%m-%dT%H:%M:%SZ')
                 time_series.append(point_dict)
-                
-                # backdated processed cases 0-24 o'clock
-                #if influx_db_measurement == 'dresden_official':
+
+                # backdated processed cases 0-24 o'clock; save in point_dict2/time_series2
                 previous_day = time - datetime.timedelta(days=1)
                 total_cases_reporting_date = {
                     'time'      : int(previous_day.timestamp()),
@@ -256,8 +257,8 @@ def main():
                         'Fallzahl_Meldedatum'   : point_dict['fields']['Fallzahl'] - point_dict['fields']['Meldedatum_or_Zuwachs'], # calculate the actual number of cases without the report of the following day by 12 noon
                     },
                 }
-
-                new_time_series_corrected_total.append(total_cases_reporting_date) # save for later for the "python" measurement
+                new_time_series_corrected_total.append(total_cases_reporting_date) # save also for later for the "python" measurement
+                # copy over point_dict and overwrite 'time' and 'fields' (preserve tags)
                 point_dict2 = copy.deepcopy(point_dict)
                 point_dict2.update(total_cases_reporting_date) # take the old dict as a template and overwrite fields with only this single field
                 time_series_2.append(point_dict2)
@@ -269,7 +270,8 @@ def main():
                     'Fallzahl_Meldedatum'   : point_dict['fields']['Fallzahl'],
                 },
             }
-            point_dict2.update(total_cases_reporting_date)
+            point_dict2 = copy.deepcopy(point_dict) # copy last point_dict of the 'for' loop
+            point_dict2.update(total_cases_reporting_date) # overwrite dict with 'time' and 'fields'
             time_series_2.append(point_dict2)
 
             # write data to database
