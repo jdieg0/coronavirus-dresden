@@ -200,7 +200,17 @@ def main():
         for influx_db_measurement in INFLUXDB_MEASUREMENTS:
             time_series = []
             time_series_2 = []
-            new_time_series_corrected_total = []
+
+            # 'python' measurement
+            python_measurement_metadata = {
+                'measurement'   : 'python',
+                'tags'          : {
+                    'data_version'  : 'noon',
+                    },
+            }
+            cases_processed_series = []
+            cases_reported_series = []
+
             for point in data['features']:
                 #if influx_db_measurement == 'dresden_official_shifted':
                 #    time = dateutil.parser.parse(point['attributes']['Datum'], dayfirst=True).replace(tzinfo=datetime.timezone.utc) + datetime.timedelta(days=1)
@@ -247,31 +257,46 @@ def main():
                 if influx_db_measurement == INFLUXDB_MEASUREMENT_ARCHIVE:
                     # save every time series, including all corrections of the city of the same day, in an separate InfluxDB measurement, distiguishable by a 'pub_date' tag (containing exact date and time)
                     point_dict['tags']['pub_date'] = influxdb_pub_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                
+                # save point to time series/measurement
                 time_series.append(point_dict)
 
                 # backdated processed cases 0-24 o'clock; save in point_dict2/time_series2
                 previous_day = time - datetime.timedelta(days=1)
-                total_cases_reporting_date = {
+                cases_processed_by_date = {
                     'time'      : int(previous_day.timestamp()),
                     'fields'    : {
-                        'Fallzahl_Meldedatum'   : point_dict['fields']['Fallzahl'] - point_dict['fields']['Meldedatum_or_Zuwachs'], # calculate the actual number of cases without the report of the following day by 12 noon
+                        'Fallzahl_Meldedatum'                   : point_dict['fields']['Fallzahl'] - point_dict['fields']['Meldedatum_or_Zuwachs'], # calculate the actual number of cases without the report of the following day by 12 noon
                     },
                 }
-                new_time_series_corrected_total.append(total_cases_reporting_date) # save also for later for the "python" measurement
-                # copy over point_dict and overwrite 'time' and 'fields' (preserve tags)
+
+                # copy point_dict and overwrite 'time' and 'fields' (preserve tags)
                 point_dict2 = copy.deepcopy(point_dict)
-                point_dict2.update(total_cases_reporting_date) # take the old dict as a template and overwrite fields with only this single field
+                point_dict2.update(cases_processed_by_date) # take the old dict as a template and overwrite fields with only this single field
                 time_series_2.append(point_dict2)
 
+                # save also for later for the 'python' measurement
+                cases_processed_series.append(cases_processed_by_date) # 'Fallzahl_Meldedatum' minus today's cases shifted to yesterday
+                # 'Fallzahl_Meldedatum' column only
+                field_changes =  {
+                    'fields'    : {
+                        'Meldedatum_or_Zuwachs_zuletzt_importiert'  : point_dict['fields']['Meldedatum_or_Zuwachs'],
+                    },
+                }
+                cases_reported_by_date = copy.deepcopy(point_dict)
+                cases_reported_by_date.update(python_measurement_metadata)
+                cases_reported_by_date.update(field_changes)
+                cases_reported_series.append(cases_reported_by_date)
+
             # add today's reported cases (until 12 o'clock)
-            total_cases_reporting_date = {
+            cases_processed_by_date = {
                 'time'      : int(time.timestamp()),
                 'fields'    : {
                     'Fallzahl_Meldedatum'   : point_dict['fields']['Fallzahl'],
                 },
             }
             point_dict2 = copy.deepcopy(point_dict) # copy last point_dict of the 'for' loop
-            point_dict2.update(total_cases_reporting_date) # overwrite dict with 'time' and 'fields'
+            point_dict2.update(cases_processed_by_date) # overwrite dict with 'time' and 'fields'
             time_series_2.append(point_dict2)
 
             # write data to database
@@ -280,28 +305,36 @@ def main():
 
         # do own calculations
         # measurement that contains the daily 12 pm reports (last point of each day)
-        new_time_series_point = time_series[-1]
+        time_series_latest = time_series[-1]
         # convert some tags into fields (dict depth = 1)
         field_changes = {
-            '01_latest_date_short_ymd'  : new_time_series_point['tags']['01_latest_date_short_ymd'],
-            'pub_date_short'            : new_time_series_point['tags']['latest_date_short'], # legacy name for compatibility reasons
-            'latest_date_short'         : new_time_series_point['tags']['latest_date_short'], # more accurate name
-            'Fallzahl_Meldedatum'       : new_time_series_point['fields']['Fallzahl'] # add today's reported cases (until 12 o'clock)
+            '01_latest_date_short_ymd'  : time_series_latest['tags']['01_latest_date_short_ymd'],
+            'pub_date_short'            : time_series_latest['tags']['latest_date_short'], # legacy name for compatibility reasons
+            'latest_date_short'         : time_series_latest['tags']['latest_date_short'], # more accurate name
+            'Fallzahl_Meldedatum'       : time_series_latest['fields']['Fallzahl'] # add today's reported cases (until 12 o'clock)
         }
-        new_time_series_point['fields'].update(field_changes)
+        time_series_latest['fields'].update(field_changes)
         # replace measurement name and tags (dict depth = 0)
-        new_time_series_point_metadata = {
-            'measurement'   : 'python',
-            'tags'          : {
-                'data_version'  : 'noon',
+        time_series_latest.update(python_measurement_metadata) # add metadata
+        db_client.write_points([time_series_latest], time_precision='s')
+
+        # add value for the reported cases of the data set published on the following day (so that the public health office had 36 h time to count them instead of 12 h)
+        point_day_before = time_series[-2]
+        point_day_before.update(python_measurement_metadata)
+        fields_overwrite = {
+            'fields'    : {
+                'Fälle_Meldedatum_Datenstand_Folgetag'  : point_day_before['fields']['Meldedatum_or_Zuwachs']
             },
         }
-        new_time_series_point.update(new_time_series_point_metadata) # add metadata
-        db_client.write_points([new_time_series_point], time_precision='s')
+        point_day_before.update(fields_overwrite)
+        db_client.write_points([point_day_before], time_precision='s')
+        
+        # 'Fallzahl_Meldedatum' minus today's cases shifted to yesterday
+        cases_processed_series_previous_day = cases_processed_series[-1]
+        cases_processed_series_previous_day.update(python_measurement_metadata)
+        db_client.write_points([cases_processed_series_previous_day], time_precision='s')
 
-        new_time_series_corrected_total_previous_day = new_time_series_corrected_total[-1]
-        new_time_series_corrected_total_previous_day.update(new_time_series_point_metadata)
-        db_client.write_points([new_time_series_corrected_total_previous_day], time_precision='s')
+        db_client.write_points(cases_reported_series, time_precision='s')
 
         series_key = 'latest_date_short={:s},script_version={:s}'.format(influxdb_tag_latest_date_short.strftime('%d.%m.%Y'), influxdb_tag_script_version) # https://docs.influxdata.com/influxdb/v1.8/concepts/glossary/#series-key
 
