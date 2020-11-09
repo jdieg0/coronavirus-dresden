@@ -3,7 +3,8 @@
 
 # constants
 RELEASE = 'v0.3.0'
-JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=pjson&where=ObjectId>=0&outFields=*'
+ARCGIS_JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=pjson&where=ObjectId>=0&outFields=*'
+GITHUB_JSON_URL = 'https://raw.githubusercontent.com/jdieg0/coronavirus-dresden-data/influxdb/latest-json' # points to a JSON file that has been checked by maintainers for errors committed by the city
 CACHED_JSON_FILENAME = 'cached.json'
 JSON_ARCHIVE_FOLDER = 'json-archive'
 
@@ -59,6 +60,7 @@ def setup():
     argparser.add_argument('-n', '--no-cache', help='suppress the saving of a JSON cache file (helpful if you do not want to mess with an active cron job looking for changes)', action='store_true')
     argparser.add_argument('-s', '--skip-influxdb', help='check for and write new JSON data only, do not write to InfluxDB', action='store_true')
     arggroup.add_argument('-t', '--auto-date', help='do not try to to parse the publishing date from the filename, instead write current date (UTC) to database', action='store_true')
+    arggroup.add_argument('-u', '--url', help='URL to be used to check for JSON updates; default: \'arcgis\'', choices=['arcgis', 'github'], default='arcgis', type=str.lower)
     argparser.add_argument('-v', '--verbose', help='print debug messages', action='store_true')
 
     global args
@@ -109,13 +111,21 @@ def main():
         logger.debug('File \'{:s}\' not found.'.format(CACHED_JSON_FILENAME))
 
     # load (possibly) new JSON data and write it to InfluxDB
+    # choose right URL to JSON file
+    if args.url == 'arcgis':
+        json_url = ARCGIS_JSON_URL
+        servername = 'ArcGIS'
+    else:
+        json_url = GITHUB_JSON_URL
+        servername = 'GitHub'
+
     if args.file:
         data = json.load(args.file)
         logger.debug('Read JSON data from local file \'{:s}\'.'.format(args.file.name))
     else:
-        with urllib.request.urlopen(JSON_URL) as response:
+        with urllib.request.urlopen(json_url) as response:
             data = json.load(response)
-            logger.debug('Downloaded JSON data from server.')
+            logger.info(f'Downloaded JSON data from server \'{servername}\'.')
    
     # get current date from system and latest entry date from the data set
     data_load_date = datetime.datetime.now(tz=datetime.timezone.utc)
