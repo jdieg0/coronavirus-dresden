@@ -111,21 +111,26 @@ def main():
         logger.debug('File \'{:s}\' not found.'.format(CACHED_JSON_FILENAME))
 
     # load (possibly) new JSON data and write it to InfluxDB
-    # choose right URL to JSON file
-    if args.url == 'arcgis':
-        json_url = ARCGIS_JSON_URL
-        servername = 'ArcGIS'
-    else:
-        json_url = GITHUB_JSON_URL
-        servername = 'GitHub'
-
     if args.file:
         data = json.load(args.file)
         logger.debug('Read JSON data from local file \'{:s}\'.'.format(args.file.name))
     else:
-        with urllib.request.urlopen(json_url) as response:
-            data = json.load(response)
-            logger.info(f'Downloaded JSON data from server \'{servername}\'.')
+        # choose right URL to JSON file
+        if args.url == 'arcgis':
+            json_url = ARCGIS_JSON_URL
+            with urllib.request.urlopen(json_url) as response:
+                data = json.load(response)
+                logger.info(f'Downloaded JSON data from server \'ArcGIS\'.')
+        else:
+            symlink_url = GITHUB_JSON_URL
+            # read relative path to latest JSON
+            with urllib.request.urlopen(symlink_url) as response:
+                symlink = response.read().decode('utf-8')
+                json_url = urllib.parse.urljoin(symlink_url, symlink) # put together the full JSON URL
+            # open the JSON itself
+            with urllib.request.urlopen(json_url) as response:
+                data = json.load(response)
+                logger.info(f'Downloaded JSON data from server \'GitHub\'.')
    
     # get current date from system and latest entry date from the data set
     data_load_date = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -168,14 +173,19 @@ def main():
             except dateutil.parser.ParserError:
                 logger.error('Failed to parse publishing date \'{:s}\'.'.format(args.date))
                 sys.exit()
-        elif args.file and not args.auto_date:
-            json_filename = pathlib.Path(args.file.name).stem
+        elif (args.file or args.url == 'github') and not args.auto_date:
+            if args.file:
+                json_filename = pathlib.Path(args.file.name).stem # read date from name of local file
+            else:
+                json_filename = pathlib.Path(json_url.rsplit('/', 1)[-1]).stem # read date from name of linked file on GitHub
+            
             try:
                 data_load_date = dateutil.parser.parse(json_filename) # try to parse the filename as date, if '--auto-date' option is set or data is loaded downloaded from server
             except dateutil.parser.ParserError:
                 logger.error('Failed to parse the publishing date \'{:s}\' from filename. Please rename the file so that it has a valid date format or use the \'--date\' option to specify the date or pass \'--auto-date\' to save the current time as the publishing date for this time series. For further help type \'python {} --help\'.'.format(json_filename, pathlib.Path(__file__).resolve().name))
                 sys.exit()
-        #else: # loaded from file with '--auto-date' option or downloaded from server
+        # else:
+            # loaded from file with '--auto-date' option or downloaded from ArcGIS server
 
         # cache JSON file
         if not args.no_cache:
