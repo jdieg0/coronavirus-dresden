@@ -44,23 +44,24 @@ from influxdb import InfluxDBClient
 def setup():
     """Performs some basic configuration regarding logging, command line options, database etc.
     """
-    # get absolute path of this Python file
-    global abs_python_file_dir
-    abs_python_file_dir = pathlib.Path(__file__).resolve().parent
+    # derive log file name from script name
     log_filename = '{}{:s}'.format(pathlib.Path(__file__).resolve().stem, '.log')
 
     # read command line arguments (https://docs.python.org/3/howto/argparse.html)
     argparser = argparse.ArgumentParser(description='Collects official SARS-CoV-2 infection statistics published by the city of Dresden.')
-    arggroup = argparser.add_mutually_exclusive_group()
-    argparser.add_argument('-a', '--archive-json', help='archive JSON file each time new data is found or force-collected', action='store_true')
+    arg_group_inputs = argparser.add_argument_group('input options', 'by default, the data is obtained online from the city\'s official source, but other import options are also available')
+    arg_group_timestamps = argparser.add_mutually_exclusive_group()
+    arg_group_outputs = argparser.add_argument_group('output options', 'new data is saved in InfluxDB by default; this and other behaviour concerning data writing can be adjusted with these output options')
+    arg_group_outputs.add_argument('-a', '--archive-json', help='archive JSON file each time new data is found or force-collected', action='store_true')
     argparser.add_argument('-c', '--force-collect', help='store JSON data, regardless of whether new data points have been found or not', action='store_true')
-    arggroup.add_argument('-d', '--date', help='set publishing date manually for the new data set, e. g. \'2020-10-18T09:52:41Z\'')
-    argparser.add_argument('-f', '--file', help='load JSON data from a local file instead from server; if no publishing date is passed with the \'--date\' option, an attempt is made to read the date from the filename', nargs='?', type=argparse.FileType('r'), const='query.json') # default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
-    argparser.add_argument('-l', '--log', help='save log in file \'{:s}\''.format(log_filename), action='store_true')
-    argparser.add_argument('-n', '--no-cache', help='suppress the saving of a JSON cache file (helpful if you do not want to mess with an active cron job looking for changes)', action='store_true')
-    argparser.add_argument('-s', '--skip-influxdb', help='check for and write new JSON data only, do not write to InfluxDB', action='store_true')
-    arggroup.add_argument('-t', '--auto-date', help='do not try to to parse the publishing date from the filename, instead write current date (UTC) to database', action='store_true')
-    arggroup.add_argument('-u', '--url', help='URL to be used to check for JSON updates; default: \'arcgis\'', choices=['arcgis', 'github'], default='arcgis', type=str.lower)
+    arg_group_timestamps.add_argument('-d', '--date', help='set publishing date manually for the new data set, e. g. \'2020-10-18T09:52:41Z\'')
+    arg_group_inputs.add_argument('-f', '--file', help='load JSON data from a local file instead from server; if no publishing date is passed with the \'--date\' or \'--auto-date\' option, an attempt is made to read the date from the filename', nargs='?', type=argparse.FileType('r'), const='query.json') # 'const' is used, if '--file' is passed without an argument; default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
+    arg_group_outputs.add_argument('-l', '--log', help='save log in file \'{:s}\''.format(log_filename), action='store_true')
+    arg_group_outputs.add_argument('-n', '--no-cache', help='suppress the saving of a JSON cache file (helpful if you do not want to mess with an active cron job looking for changes)', action='store_true')
+    arg_group_outputs.add_argument('-o', '--output-dir', help='set a user defined directory where data (cache, logs and JSONs) are stored; default: directory of this Python script', default=pathlib.Path(__file__).resolve().parent) # use absolute path of this Python file as default directory
+    arg_group_outputs.add_argument('-s', '--skip-influxdb', help='check for and write new JSON data only, do not write to InfluxDB', action='store_true')
+    arg_group_timestamps.add_argument('-t', '--auto-date', help='do not try to to parse the publishing date from the filename, instead write current date (UTC) to database', action='store_true')
+    arg_group_inputs.add_argument('-u', '--url', help='URL to be used to check for JSON updates; default: \'arcgis\'', choices=['arcgis', 'github'], default='arcgis', type=str.lower)
     argparser.add_argument('-v', '--verbose', help='print debug messages', action='store_true')
 
     global args
@@ -85,9 +86,17 @@ def setup():
     handler.setFormatter(log_formatter)
     logger.addHandler(handler)
 
+    # get path for output
+    global output_dir
+    try:
+        output_dir = pathlib.Path(args.output_dir)
+    except TypeError:
+        logger.error(f'Could not resolve output directory \'{args.output_dir}\'.')
+        sys.exit()
+
     # log to file
     if args.log:
-        handler = logging.handlers.RotatingFileHandler(pathlib.Path(abs_python_file_dir, log_filename), maxBytes=2**20, backupCount=5) # https://stackoverflow.com/a/13733777/7192373; https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler
+        handler = logging.handlers.RotatingFileHandler(pathlib.Path(output_dir, log_filename), maxBytes=2**20, backupCount=5) # https://stackoverflow.com/a/13733777/7192373; https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler
         handler.setFormatter(log_formatter)
         logger.addHandler(handler)
 
@@ -102,9 +111,9 @@ def main():
     setup()
 
     # load locally cached JSON file
-    json_file_path = pathlib.Path(abs_python_file_dir, CACHED_JSON_FILENAME)
+    cached_json_path = pathlib.Path(output_dir, CACHED_JSON_FILENAME).resolve()
     try:
-        with open(json_file_path, 'r') as json_file:
+        with open(cached_json_path, 'r') as json_file:
             cached_data = json.load(json_file)
     except FileNotFoundError:
         cached_data = None
@@ -130,7 +139,7 @@ def main():
             # open the JSON itself
             with urllib.request.urlopen(json_url) as response:
                 data = json.load(response)
-                logger.info(f'Downloaded JSON data from server \'GitHub\'.')
+                logger.debug(f'Downloaded JSON data from server \'GitHub\'.')
    
     # get current date from system and latest entry date from the data set
     data_load_date = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -189,8 +198,10 @@ def main():
 
         # cache JSON file
         if not args.no_cache:
-            with open(json_file_path, 'w') as json_file:
+            pathlib.Path.mkdir(output_dir, exist_ok=True)
+            with open(cached_json_path, 'w') as json_file:
                 json.dump(data, json_file, indent=2)
+
         # archive JSON file
         if args.archive_json:
             # Save JSON data in different styles
@@ -200,7 +211,7 @@ def main():
                 'pjson'         : 2, # make JSON human readable by pretty printing
             }
             for folder, indent in json_styles.items():
-                archive_file_dir = pathlib.Path(abs_python_file_dir, JSON_ARCHIVE_FOLDER, folder)
+                archive_file_dir = pathlib.Path(output_dir, JSON_ARCHIVE_FOLDER, folder)
                 pathlib.Path.mkdir(archive_file_dir, exist_ok=True)
                 archive_file_path = pathlib.Path(archive_file_dir, '{:s}.json'.format(data_load_date.strftime('%Y-%m-%dT%H%M%SZ')))
                 with open(archive_file_path, 'w') as json_file:
