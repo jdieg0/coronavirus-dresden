@@ -79,7 +79,7 @@ def setup():
     logger.setLevel(log_level)
 
     # log format
-    logging_format = '%(asctime)s %(levelname)s %(message)s' # %(name)s.%(funcName)s %(pathname)s:
+    logging_format = '[%(asctime)s] %(levelname)s %(message)s' # %(name)s.%(funcName)s %(pathname)s:
     log_formatter = logging.Formatter(logging_format) #, datefmt="%Y-%m-%dT%H:%M:%S")
 
     # log to console
