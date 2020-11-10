@@ -120,7 +120,7 @@ def main():
             json_url = ARCGIS_JSON_URL
             with urllib.request.urlopen(json_url) as response:
                 data = json.load(response)
-                logger.info(f'Downloaded JSON data from server \'ArcGIS\'.')
+                logger.debug(f'Downloaded JSON data from server \'ArcGIS\'.')
         else:
             symlink_url = GITHUB_JSON_URL
             # read relative path to latest JSON
