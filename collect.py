@@ -6,7 +6,8 @@ RELEASE = 'v0.3.0'
 ARCGIS_JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=pjson&where=ObjectId>=0&outFields=*'
 GITHUB_JSON_URL = 'https://raw.githubusercontent.com/jdieg0/coronavirus-dresden-data/influxdb/latest-json' # points to a JSON file that has been checked by maintainers for errors committed by the city
 CACHED_JSON_FILENAME = 'cached.json'
-JSON_ARCHIVE_FOLDER = 'json-archive'
+OUTPUT_FOLDER = 'output'
+JSON_ARCHIVE_FOLDER = 'data'
 
 INFLUXDB_DATABASE = 'corona_dd'
 INFLUXDB_MEASUREMENTS = ['dresden_official', 'dresden_official_all'] # all measurements to be saved
@@ -58,7 +59,7 @@ def setup():
     arg_group_inputs.add_argument('-f', '--file', help='load JSON data from a local file instead from server; if no publishing date is passed with the \'--date\' or \'--auto-date\' option, an attempt is made to read the date from the filename', nargs='?', type=argparse.FileType('r'), const='query.json') # 'const' is used, if '--file' is passed without an argument; default=sys.stdin; https://stackoverflow.com/a/15301183/7192373
     arg_group_outputs.add_argument('-l', '--log', help='save log in file \'{:s}\''.format(log_filename), action='store_true')
     arg_group_outputs.add_argument('-n', '--no-cache', help='suppress the saving of a JSON cache file (helpful if you do not want to mess with an active cron job looking for changes)', action='store_true')
-    arg_group_outputs.add_argument('-o', '--output-dir', help='set a user defined directory where data (cache, logs and JSONs) are stored; default: directory of this Python script', default=pathlib.Path(__file__).resolve().parent) # use absolute path of this Python file as default directory
+    arg_group_outputs.add_argument('-o', '--output-dir', help='set a user defined directory where data (cache, logs and JSONs) are stored; default: directory of this Python script', default=pathlib.Path(pathlib.Path(__file__).resolve().parent, OUTPUT_FOLDER)) # use absolute path of this Python folder as default directory
     arg_group_outputs.add_argument('-s', '--skip-influxdb', help='check for and write new JSON data only, do not write to InfluxDB', action='store_true')
     arg_group_timestamps.add_argument('-t', '--auto-date', help='do not try to to parse the publishing date from the filename, instead write current date (UTC) to database', action='store_true')
     arg_group_inputs.add_argument('-u', '--url', help='URL to be used to check for JSON updates; default: \'arcgis\'', choices=['arcgis', 'github'], default='arcgis', type=str.lower)
@@ -198,7 +199,7 @@ def main():
 
         # cache JSON file
         if not args.no_cache:
-            pathlib.Path.mkdir(output_dir, exist_ok=True)
+            pathlib.Path.mkdir(output_dir, parents=True, exist_ok=True)
             with open(cached_json_path, 'w') as json_file:
                 json.dump(data, json_file, indent=2)
 
@@ -212,7 +213,7 @@ def main():
             }
             for folder, indent in json_styles.items():
                 archive_file_dir = pathlib.Path(output_dir, JSON_ARCHIVE_FOLDER, folder)
-                pathlib.Path.mkdir(archive_file_dir, exist_ok=True)
+                pathlib.Path.mkdir(archive_file_dir, parents=True, exist_ok=True)
                 archive_file_path = pathlib.Path(archive_file_dir, '{:s}.json'.format(data_load_date.strftime('%Y-%m-%dT%H%M%SZ')))
                 with open(archive_file_path, 'w') as json_file:
                     json.dump(data, json_file, indent=indent)
