@@ -4,7 +4,7 @@
 # constants
 RELEASE = 'v0.3.0'
 ARCGIS_JSON_URL = 'https://services.arcgis.com/ORpvigFPJUhb8RDF/arcgis/rest/services/corona_DD_7_Sicht/FeatureServer/0/query?f=pjson&where=ObjectId>=0&outFields=*'
-GITHUB_JSON_URL = 'https://raw.githubusercontent.com/jdieg0/coronavirus-dresden-data/influxdb/latest-json' # points to a JSON file that has been checked by maintainers for errors committed by the city
+GITHUB_JSON_URL = 'https://raw.githubusercontent.com/jdieg0/coronavirus-dresden-data/main/latest-json' # points to a JSON file that has been checked by maintainers for errors committed by the city
 CACHED_JSON_FILENAME = 'cached.json'
 OUTPUT_FOLDER = 'output'
 JSON_ARCHIVE_FOLDER = 'data'
