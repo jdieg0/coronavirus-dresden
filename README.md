@@ -10,7 +10,8 @@ This script collects official infection statistics published by the city of Dres
 
 Subsequent changes to the published data set can also be detected and routinely logged.
 
-**Data sets are archived [here](https://github.com/jdieg0/coronavirus-dresden-data).**
+- **Data sets are archived [here](https://github.com/jdieg0/coronavirus-dresden-data).**
+- **And you can have a look at my dashboard [here](https://coronavirus-dresden.de/).**
 
 ## Data source
 
