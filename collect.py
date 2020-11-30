@@ -275,6 +275,7 @@ def main():
                         'Hospitalisierung'              : int(point['attributes']['Hospitalisierung'] or 0),
                         'Hosp_Meldedatum'               : int(point['attributes'].get('Hosp_Meldedatum') or 0),
                         'Inzidenz'                      : float(point['attributes']['Inzidenz'] or 0),
+                        'Inzidenz_RKI'                  : float(point['attributes']['Inzidenz_RKI'] or 0),
                         'ObjectId'                      : int(point['attributes']['ObjectId'] or 0),
                         'Sterbefall'                    : int(point['attributes']['Sterbefall'] or 0),
                         'SterbeF_Meldedatum'            : int(point['attributes'].get('SterbeF_Meldedatum') or 0),
