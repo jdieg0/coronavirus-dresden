@@ -265,33 +265,33 @@ def main():
                         'latest_date_seconds'           : int(influxdb_field_latest_date.timestamp()), # add better searchable UNIX timestamp in seconds in addition to the human readable 'latest_date_short' tag; https://docs.influxdata.com/influxdb/v2.0/reference/glossary/#unix-timestamp; POSIX timestamps in Python: https://stackoverflow.com/a/8778548/7192373
                         'Meldedatum_or_Zuwachs'         : int(point['attributes'].get('Fälle_Meldedatum', point['attributes']['Zuwachs_Fallzahl']) or 0), # Get the field 'Fälle_Meldedatum' that was introduced by the city on 29.10.2020, for older data sets use the field 'Zuwachs_Fallzahl'
                         # fields from data source
-                        'Anzeige_Indikator'             : str(point['attributes']['Anzeige_Indikator']), # value is either None or 'x'
-                        'BelegteBetten'                 : int(point['attributes']['BelegteBetten'] or 0), # replace NoneType with 0
-                        'Datum'                         : str(point['attributes']['Datum']),
-                        'Datum_neu'                     : int(point['attributes']['Datum_neu'] or 0),
-                        'Fallzahl'                      : int(point['attributes']['Fallzahl'] or 0),
+                        'Anzeige_Indikator'             : str(point['attributes'].get('Anzeige_Indikator')), # value is either None or 'x'
+                        'BelegteBetten'                 : int(point['attributes'].get('BelegteBetten') or 0), # replace NoneType with 0
+                        'Datum'                         : str(point['attributes'].get('Datum')),
+                        'Datum_neu'                     : int(point['attributes'].get('Datum_neu') or 0),
+                        'Fallzahl'                      : int(point['attributes'].get('Fallzahl') or 0),
                         'Fallzahl_aktiv'                : int(point['attributes'].get('Fallzahl_aktiv') or 0),
                         'Fallzahl_aktiv_Zuwachs'        : int(point['attributes'].get('Fallzahl_aktiv_Zuwachs') or 0),
                         'Fälle_Meldedatum'              : int(point['attributes'].get('Fälle_Meldedatum') or 0),
-                        'Genesungsfall'                 : int(point['attributes']['Genesungsfall'] or 0),
-                        'Hospitalisierung'              : int(point['attributes']['Hospitalisierung'] or 0),
+                        'Genesungsfall'                 : int(point['attributes'].get('Genesungsfall') or 0),
+                        'Hospitalisierung'              : int(point['attributes'].get('Hospitalisierung') or 0),
                         'Hosp_Meldedatum'               : int(point['attributes'].get('Hosp_Meldedatum') or 0),
-                        'Inzidenz'                      : float(point['attributes']['Inzidenz'] or 0),
-                        'Inzidenz_RKI'                  : float(point['attributes']['Inzidenz_RKI'] or 0),
+                        'Inzidenz'                      : float(point['attributes'].get('Inzidenz') or 0),
+                        'Inzidenz_RKI'                  : float(point['attributes'].get('Inzidenz_RKI') or 0),
                         'Krh_I'                         : int(point['attributes'].get('Krh_I') or 0),
                         'Krh_I_belegt'                  : int(point['attributes'].get('Krh_I_belegt') or 0),
                         'Krh_I_frei'                    : int(point['attributes'].get('Krh_I_frei') or 0),
                         'Krh_N'                         : int(point['attributes'].get('Krh_N') or 0),
                         'Krh_N_belegt'                  : int(point['attributes'].get('Krh_N_belegt') or 0),
                         'Krh_N_frei'                    : int(point['attributes'].get('Krh_N_frei') or 0),
-                        'ObjectId'                      : int(point['attributes']['ObjectId'] or 0),
-                        'Sterbefall'                    : int(point['attributes']['Sterbefall'] or 0),
+                        'ObjectId'                      : int(point['attributes'].get('ObjectId') or 0),
+                        'Sterbefall'                    : int(point['attributes'].get('Sterbefall') or 0),
                         'SterbeF_Meldedatum'            : int(point['attributes'].get('SterbeF_Meldedatum') or 0),
                         'Zeitraum'                      : str(point['attributes'].get('Zeitraum')),
-                        'Zuwachs_Fallzahl'              : int(point['attributes']['Zuwachs_Fallzahl'] or 0),
-                        'Zuwachs_Genesung'              : int(point['attributes']['Zuwachs_Genesung'] or 0),
-                        'Zuwachs_Krankenhauseinweisung' : int(point['attributes']['Zuwachs_Krankenhauseinweisung'] or 0),
-                        'Zuwachs_Sterbefall'            : int(point['attributes']['Zuwachs_Sterbefall'] or 0),
+                        'Zuwachs_Fallzahl'              : int(point['attributes'].get('Zuwachs_Fallzahl') or 0),
+                        'Zuwachs_Genesung'              : int(point['attributes'].get('Zuwachs_Genesung') or 0),
+                        'Zuwachs_Krankenhauseinweisung' : int(point['attributes'].get('Zuwachs_Krankenhauseinweisung') or 0),
+                        'Zuwachs_Sterbefall'            : int(point['attributes'].get('Zuwachs_Sterbefall') or 0),
                     },
                 }
 
