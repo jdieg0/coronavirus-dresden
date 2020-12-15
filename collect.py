@@ -277,7 +277,7 @@ def main():
                         'Hospitalisierung'              : int(point['attributes'].get('Hospitalisierung') or 0),
                         'Hosp_Meldedatum'               : int(point['attributes'].get('Hosp_Meldedatum') or 0),
                         'Inzidenz'                      : float(point['attributes'].get('Inzidenz') or 0),
-                        'Inzidenz_RKI'                  : float(point['attributes'].get('Inzidenz_RKI') or 0),
+                        'Inzidenz_RKI'                  : float(point['attributes'].get('Inzidenz_RKI')) if point['attributes'].get('Inzidenz_RKI') else None, # convert only to float if value is not None
                         'Krh_I'                         : int(point['attributes'].get('Krh_I') or 0),
                         'Krh_I_belegt'                  : int(point['attributes'].get('Krh_I_belegt') or 0),
                         'Krh_I_frei'                    : int(point['attributes'].get('Krh_I_frei') or 0),
