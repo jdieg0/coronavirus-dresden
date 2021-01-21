@@ -280,6 +280,7 @@ def main():
                         'Inzidenz_RKI'                  : float(point['attributes'].get('Inzidenz_RKI')) if point['attributes'].get('Inzidenz_RKI') else None, # convert only to float if value is not None
                         'Krh_I'                         : int(point['attributes'].get('Krh_I') or 0),
                         'Krh_I_belegt'                  : int(point['attributes'].get('Krh_I_belegt') or 0),
+                        'Krh_I_covid'                   : int(point['attributes'].get('Krh_I_covid') or 0),
                         'Krh_I_frei'                    : int(point['attributes'].get('Krh_I_frei') or 0),
                         'Krh_N'                         : int(point['attributes'].get('Krh_N') or 0),
                         'Krh_N_belegt'                  : int(point['attributes'].get('Krh_N_belegt') or 0),
@@ -287,6 +288,8 @@ def main():
                         'ObjectId'                      : int(point['attributes'].get('ObjectId') or 0),
                         'Sterbefall'                    : int(point['attributes'].get('Sterbefall') or 0),
                         'SterbeF_Meldedatum'            : int(point['attributes'].get('SterbeF_Meldedatum') or 0),
+                        'SterbeF_Sterbedatum'           : int(point['attributes'].get('SterbeF_Sterbedatum') or 0),
+                        'Vorz_akt_Faelle'               : str(point['attributes'].get('Vorz_akt_Faelle')),
                         'Zeitraum'                      : str(point['attributes'].get('Zeitraum')),
                         'Zuwachs_Fallzahl'              : int(point['attributes'].get('Zuwachs_Fallzahl') or 0),
                         'Zuwachs_Genesung'              : int(point['attributes'].get('Zuwachs_Genesung') or 0),
