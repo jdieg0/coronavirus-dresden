@@ -286,6 +286,7 @@ def main():
                         'Krh_N'                         : int(point['attributes'].get('Krh_N') or 0),
                         'Krh_N_belegt'                  : int(point['attributes'].get('Krh_N_belegt') or 0),
                         'Krh_N_frei'                    : int(point['attributes'].get('Krh_N_frei') or 0),
+                        'Mutation'                      : int(point['attributes'].get('Mutation')) if point['attributes'].get('Mutation') else None,
                         'ObjectId'                      : int(point['attributes'].get('ObjectId') or 0),
                         'Sterbefall'                    : int(point['attributes'].get('Sterbefall') or 0),
                         'SterbeF_Meldedatum'            : int(point['attributes'].get('SterbeF_Meldedatum') or 0),
@@ -295,6 +296,7 @@ def main():
                         'Zuwachs_Fallzahl'              : int(point['attributes'].get('Zuwachs_Fallzahl') or 0),
                         'Zuwachs_Genesung'              : int(point['attributes'].get('Zuwachs_Genesung') or 0),
                         'Zuwachs_Krankenhauseinweisung' : int(point['attributes'].get('Zuwachs_Krankenhauseinweisung') or 0),
+                        'Zuwachs_Mutation'              : int(point['attributes'].get('Zuwachs_Mutation')) if point['attributes'].get('Zuwachs_Mutation') else None,
                         'Zuwachs_Sterbefall'            : int(point['attributes'].get('Zuwachs_Sterbefall') or 0),
                     },
                 }
