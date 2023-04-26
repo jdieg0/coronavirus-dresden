@@ -10,12 +10,14 @@ This script collects official infection statistics published by the city of Dres
 
 Subsequent changes to the published data set can also be detected and routinely logged.
 
-- **Data sets are archived [here](https://github.com/jdieg0/coronavirus-dresden-data).**
-- **And you can have a look at my dashboard [here](https://coronavirus-dresden.de/).**
+**Data sets are archived [here](https://github.com/jdieg0/coronavirus-dresden-data).**
+
+> **Note**
+> The coronavirus dashboard based on this script and database was hosted at [coronavirus-dresden.de](https://coronavirus-dresden.de/) during the COVID-19 pandemic. On 04/26/2023, it was discontinued after more than two years. **Thanks to all who accompanied and actively supported this project throughout that time!** :heart:
 
 ## Data source
 
-The raw data provided by the [city of Dresden](https://www.dresden.de/de/leben/gesundheit/hygiene/infektionsschutz/corona.php) and visualised on their [Dashboard](https://stva-dd.maps.arcgis.com/apps/opsdashboard/index.html#/3eef863531024aa4ad0c4ac94adc58e0) is obtained from the following source:
+The raw data provided by the [city of Dresden](https://www.dresden.de/de/leben/gesundheit/hygiene/infektionsschutz/corona.php) and visualised on their [Dashboard](https://experience.arcgis.com/experience/d2386f3214c1451c81b242be69bb3d50) is obtained from the following source:
 
 - [Overview over all tables and data fields](https://services.arcgis.com/ORpvigFPJUhb8RDF/ArcGIS/rest/services/corona_DD_7_Sicht/FeatureServer/layers)
 - [Web form for queries](https://services.arcgis.com/ORpvigFPJUhb8RDF/ArcGIS/rest/services/corona_DD_7_Sicht/FeatureServer/query)
